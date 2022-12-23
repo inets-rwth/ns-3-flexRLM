@@ -24,7 +24,7 @@ To build the set of default libraries and the example programs included in this 
 ```
 in the directory which contains this README file. The files built will be copied in the build/ directory.
 
-The flexRLM ns-3 framework is build as an extension to the [ns-3 5G-LENA module](https://github.com/QiuYukang/5G-LENA), which is a pluggable module to the ns-3 base simulator.
+The flexRLM ns-3 framework is built as an extension to the [ns-3 5G-LENA module](https://github.com/QiuYukang/5G-LENA), which is a pluggable module to the ns-3 base simulator.
 
 ## Running ns-3-flexRLM
 On recent Linux systems, once you have built ns-3, it should be easy to run the sample program with the following command:
