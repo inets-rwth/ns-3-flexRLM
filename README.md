@@ -2,7 +2,7 @@
 The Network Simulator, Version 3, flexRLM framework
 ================================
 
-The following ns-3 code is based on the proposed work in the paper:
+This ns-3 code is based on the proposed work in the paper:
 
 [1] A. Ichkov, A. Schott, P. Mähönen and L. Simić, 'flexRLM: Flexible Radio Link Monitoring for Multi-User Downlink Millimeter-Wave Networks', to be presented in Proc. IEEE INFOCOM 2023.
 
