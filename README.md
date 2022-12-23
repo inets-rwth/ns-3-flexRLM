@@ -2,9 +2,9 @@
 The Network Simulator, Version 3, flexRLM framework
 ================================
 
-This ns-3 code is based on the proposed work in the paper:
+This ns-3 code is based on the work proposed in the paper:
 
-[1] A. Ichkov, A. Schott, P. Mähönen and L. Simić, 'flexRLM: Flexible Radio Link Monitoring for Multi-User Downlink Millimeter-Wave Networks', to be presented in Proc. IEEE INFOCOM 2023.
+[1] A. Ichkov, A. Schott, P. Mähönen and L. Simić, 'flexRLM: Flexible Radio Link Monitoring for Multi-User Downlink Millimeter-Wave Networks', in Proc. IEEE INFOCOM 2023, May 2023 (to appear).
 
 This code enables multi-user downlink millimeter-wave end-to-end network simulations utilizing 5G-NR standard-compliant beam management downlink operations. 
 It is based on the flexRLM framework, a coordinator-based flexible radio link monitoring (RLM) framework that enables joint beam management and low complexity load-balancing in multi-user mm-wave downlink networks.
