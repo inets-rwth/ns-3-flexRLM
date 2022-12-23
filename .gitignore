@@ -1,0 +1,15 @@
+.DS_Store
+
+build-dir/
+build/
+
+.lock-waf_*_build
+.waf*
+
+bindings/python/pybindgen/
+
+out/
+
+__pycache__/
+
+waf-tools/
