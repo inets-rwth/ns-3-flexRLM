@@ -107,7 +107,6 @@ public:
    */
   void UpdateConfig ();
 
-  // ADDED DURING MERGING
 
   std::map < uint8_t, Ptr<BandwidthPartGnb> > GetCcMap ();
 

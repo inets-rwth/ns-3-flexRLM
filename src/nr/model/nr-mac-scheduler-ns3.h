@@ -725,6 +725,8 @@ private:
 
     uint8_t m_totUlSym;  //!< Total symbols used for UL
     std::vector<AllocElem> m_ulAllocations; //!< List of UL allocations
+
+    uint8_t m_dlCtrlSymbols;
   };
 
   std::vector<Assignation>
@@ -778,7 +780,7 @@ private:
                         ActiveUeMap *activeDlUe, const SfnSf &dlSfnSf,
                         const SlotElem &ulAllocations, SlotAllocInfo *allocInfo);
   uint8_t DoScheduleUl (const std::vector <UlHarqInfo> &ulHarqFeedback, const SfnSf &ulSfn,
-                        SlotAllocInfo *allocInfo, LteNrTddSlotType type);
+                       SlotAllocInfo *allocInfo, LteNrTddSlotType type, uint8_t dlCtrlSymbols);
 
   static const unsigned m_macHdrSize = 0;  //!< Mac Header size
   static const uint32_t m_subHdrSize = 4;  //!< Sub Header size (?)

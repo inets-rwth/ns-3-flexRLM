@@ -235,7 +235,6 @@ BeamManager::SetSector (uint16_t sector, double elevation) const
   m_antennaArray->SetBeamformingVector(CreateDirectionalBfv (m_antennaArray, sector, elevation));
 }
 
-// Added during merging
 double
 BeamManager::GetAntennaArrayGainDb (Angles angle)
 {

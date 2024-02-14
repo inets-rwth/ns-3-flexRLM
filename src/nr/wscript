@@ -88,6 +88,17 @@ def build(bld):
         'model/ideal-beamforming-algorithm.cc',
         'model/sfnsf.cc',
         'model/lena-error-model.cc',
+        'utils/traffic-generators/helper/traffic-generator-helper.cc',
+        'utils/traffic-generators/model/traffic-generator.cc',
+        'utils/traffic-generators/model/traffic-generator-ftp-single.cc',
+        'utils/traffic-generators/model/traffic-generator-ngmn-ftp-multi.cc',
+        'utils/traffic-generators/model/traffic-generator-ngmn-video.cc',
+        'utils/traffic-generators/model/traffic-generator-ngmn-gaming.cc',
+        'utils/traffic-generators/model/traffic-generator-ngmn-voip.cc',
+        'utils/traffic-generators/model/traffic-generator-3gpp-pose-control.cc',
+        'utils/traffic-generators/model/traffic-generator-3gpp-audio-data.cc',
+        'utils/traffic-generators/model/traffic-generator-3gpp-generic-video.cc',
+        'utils/traffic-generators/helper/xr-traffic-mixer-helper.cc',
         ]
 
     module_test = bld.create_ns3_module_test_library('nr')
@@ -112,6 +123,7 @@ def build(bld):
         'test/nr-lte-cc-bwp-configuration.cc',
         'test/system-scheduler-test.cc',
         'test/test-nr-mac-short-bsr-ce.cc',
+        'utils/traffic-generators/test/traffic-generator-test.cc',
         ]
 
     headers = bld(features='ns3header')
@@ -200,6 +212,17 @@ def build(bld):
         'model/ideal-beamforming-algorithm.h',
         'model/sfnsf.h',
         'model/lena-error-model.h',
+        'utils/traffic-generators/helper/traffic-generator-helper.h',
+        'utils/traffic-generators/model/traffic-generator.h',
+        'utils/traffic-generators/model/traffic-generator-ftp-single.h',
+        'utils/traffic-generators/model/traffic-generator-ngmn-ftp-multi.h',
+        'utils/traffic-generators/model/traffic-generator-ngmn-video.h',
+        'utils/traffic-generators/model/traffic-generator-ngmn-gaming.h',
+        'utils/traffic-generators/model/traffic-generator-ngmn-voip.h',
+        'utils/traffic-generators/model/traffic-generator-3gpp-pose-control.h',
+        'utils/traffic-generators/model/traffic-generator-3gpp-audio-data.h',
+        'utils/traffic-generators/model/traffic-generator-3gpp-generic-video.h',
+        'utils/traffic-generators/helper/xr-traffic-mixer-helper.h',
         ]
 
     if bld.env.ENABLE_EXAMPLES:

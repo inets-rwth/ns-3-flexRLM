@@ -27,9 +27,6 @@
 #include <ns3/lte-ue-cphy-sap.h>
 #include <ns3/traced-callback.h>
 #include <ns3/nr-gnb-net-device.h>
-
-//ADDED DURING MERGING
-
 #include <ns3/ideal-beamforming-helper.h>
 
 namespace ns3 {
@@ -268,6 +265,24 @@ public:
   void EnqueueDlHarqFeedback (const DlHarqInfo &m);
 
   /**
+   * \brief Called when DlCtrlSinr is fired
+   * \param sinr the sinr PSD
+   * \param streamId the stream ID
+   */
+  void ReportDlCtrlSinr(const SpectrumValue& sinr, uint8_t streamId);
+
+  /**
+   *  TracedCallback signature for DL CTRL SINR trace callback
+   *
+   * \param [in] cellId
+   * \param [in] rnti
+   * \param [in] sinr
+   * \param [in] bwpId
+   * \param [in] streamId
+   */
+  typedef void (*DlCtrlSinrTracedCallback)(uint16_t, uint16_t, double, uint16_t, uint8_t);
+
+  /**
    *  TracedCallback signature for Ue Phy Received Control Messages.
    *
    * \param [in] frame Frame number.
@@ -357,6 +372,14 @@ public:
   virtual void ScheduleStartEventLoop (uint32_t nodeId, uint16_t frame, uint8_t subframe, uint16_t slot) override;
 
   /**
+   * \brief Receive PSS and calculate RSRQ in dBm
+   *
+   * \param cellId the cell ID
+   * \param p PSS list
+   */
+  void ReceivePss(uint16_t cellId, const Ptr<SpectrumValue>& p);
+
+  /**
    * \brief TracedCallback signature for power trace source
    *
    * It depends on the TxPower configured attribute, and the number of
@@ -373,8 +396,6 @@ public:
   typedef void (* PowerSpectralDensityTracedCallback)(const SfnSf &sfnSf, Ptr<const SpectrumValue> v,
                                                       const Time &time, uint16_t rnti,
                                                       uint64_t imsi, uint16_t bwpId, uint16_t cellId);
-
-  // ADDED DURING MERGING
 
   void UpdateSinrEstimate (uint16_t cellId, double sinr);
 
@@ -438,6 +459,16 @@ protected:
   uint32_t GetChannelBandwidth () const override;
 
 private:
+
+  /**
+   * \brief Layer-1 filtering of RSRP measurements and reporting to the RRC entity.
+   * Fo the moment we don't report to RRC but the function is prepared to be
+   * extended once RRC is ported.
+   *
+   * Initially executed at +0.200s, and then repeatedly executed with
+   * periodicity as indicated by the *UeMeasFilterPeriod* attribute.
+   */
+  void ReportUeMeasurements();
 
   /**
    * \brief Compute the AvgSinr (copied from LteUePhy)
@@ -747,6 +778,35 @@ private:
   uint8_t m_dlCtrlSyms {1}; //!< Number of CTRL symbols in DL
   uint8_t m_ulCtrlSyms {1}; //!< Number of CTRL symbols in UL
 
+  /// Summary results of measuring a specific cell. Used for layer-1 filtering.
+  struct UeMeasurementsElement
+  {
+      double rsrpSum;  //!< Sum of RSRP sample values in linear unit.
+      uint8_t rsrpNum; //!< Number of RSRP samples.
+      // For the moment rsrq is not supported so set to 0
+      double rsrqSum;  //!< Sum of RSRQ sample values in linear unit.
+      uint8_t rsrqNum; //!< Number of RSRQ samples.
+  };
+
+  /**
+   * Store measurement results during the last layer-1 filtering period.
+   * Indexed by the physical cell ID where the measurements come from.
+   */
+  std::map<uint16_t, UeMeasurementsElement> m_ueMeasurementsMap;
+  /**
+   * The `UeMeasurementsFilterPeriod` attribute. Time period for reporting UE
+   * measurements, i.e., the length of layer-1 filtering (default 200 ms).
+   */
+  Time m_ueMeasurementsFilterPeriod;
+
+  //N END
+
+  /**
+   * The `DlCtrlSinrTracedCallback` trace source. Trace information regarding
+   * average SINR (see TS 36.214). Exporting cell ID, RNTI, IMSI, SINR, BWP id, and stream id.
+   */
+  TracedCallback<uint16_t, uint16_t, uint64_t, double, uint16_t, uint8_t> m_dlCtrlSinrTrace;
+  TracedCallback<uint16_t, uint16_t, uint64_t, double, bool> m_sinrEstimateTrace;
   /**
    * The `ReportCurrentCellRsrpSinr` trace source. Trace information regarding
    * RSRP and average SINR (see TS 36.214). Exporting cell ID, RNTI, RSRP, and
@@ -756,6 +816,12 @@ private:
   TracedCallback<uint64_t, uint64_t> m_reportUlTbSize; //!< Report the UL TBS
   TracedCallback<uint64_t, uint64_t> m_reportDlTbSize; //!< Report the DL TBS
   TracedCallback<const SfnSf &, Ptr<const SpectrumValue>, const Time &, uint16_t, uint64_t, uint16_t, uint16_t> m_reportPowerSpectralDensity; //!< Report the Tx power
+
+  /**
+   * Trace information regarding RSRP
+   * Exporting cell ID, IMSI, RNTI, RSRP and BWP id
+   */
+  TracedCallback<uint16_t, uint16_t, uint16_t, double, uint8_t> m_reportRsrpTrace;
 
   /**
    * Trace information regarding Ue PHY Received Control Messages
@@ -789,7 +855,6 @@ private:
 
   TracedCallback <RadioLinkMonitoringTraceParams> m_radioLinkMonitoringTrace;
 
-  // ADDED DURING MERGING
   std::map<uint16_t, double> m_cellSinrMap;
   
   uint8_t m_consecutiveSinrBelowThreshold;

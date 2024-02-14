@@ -137,7 +137,6 @@ NrGnbMacMemberEnbCmacSapProvider::AllocateNcRaPreamble (uint16_t rnti)
   return m_mac->DoAllocateNcRaPreamble (rnti);
 }
 
-// ADDED DURING MERGING
 void 
 NrGnbMacMemberEnbCmacSapProvider::SetRAProcessFlag (bool raProcessContinuing)
 {
@@ -1643,7 +1642,6 @@ NrGnbMac::DoAllocateNcRaPreamble (uint16_t rnti)
   return ret;
 }
 
-// ADDED DURING MERGING
 void
 NrGnbMac::DoSetRaProcessFlag (bool raProcessContinuing)
 {
@@ -1913,8 +1911,8 @@ NrGnbMac::DoUpdateCSIRSRLMResources (uint64_t imsi, uint8_t maxCSIperFrame)
   SfnSf csiRSResourceSlot;
   uint8_t frameRemainder;
 
-  std::map<uint64_t,std::map<uint8_t, std::vector<std::pair<std::pair<uint8_t, uint8_t>, bool>>>>::iterator csiRSResourceIt = m_mapOfCSIRSResources.find (imsi);
-  NS_ASSERT(csiRSResourceIt != m_mapOfCSIRSResources.end());
+  std::map<uint64_t,std::map<uint8_t, std::vector<std::pair<std::pair<uint8_t, uint8_t>, bool>>>>::iterator csiRSResourceIt = m_mapOfCSIRSResources.find(imsi);
+  NS_ASSERT_MSG(csiRSResourceIt != m_mapOfCSIRSResources.end(), "imsi not found in map, imsi: " << std::to_string(imsi));
 
   for (auto n = 0; n < m_noOfBeamsTbRLM; n++)
   {

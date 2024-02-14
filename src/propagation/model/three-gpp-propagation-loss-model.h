@@ -224,7 +224,6 @@ protected:
 
   mutable std::unordered_map<uint32_t, ShadowingMapItem> m_shadowingMap; //!< map to store the shadowing values
 
-  // ADDED DURING MERGING
   bool m_channelTypeRaytracing;
 };
 

@@ -168,7 +168,6 @@ public:
    */
   virtual AllocateNcRaPreambleReturnValue AllocateNcRaPreamble (uint16_t rnti) = 0;
 
-  // ADDED DURING MERGING
   // HACK TO SET m_raProcessContinuing flag in nr-gnb-mac to true or false
   virtual void SetRAProcessFlag(bool raProcessContinuting) = 0;
 

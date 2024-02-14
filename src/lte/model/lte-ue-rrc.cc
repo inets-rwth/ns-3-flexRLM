@@ -3389,7 +3389,7 @@ LteUeRrc::RadioLinkFailureDetected ()
 
         if (params.snrBeforeSweep < m_outageThreshold)
         {
-          NS_LOG_UNCOND("No Handover has been scheduled, will perform an IA due to outage");
+          NS_LOG_UNCOND("No Handover has been scheduled, will perform an IA due to outage, IMSI: " << m_imsi);
           if (m_cellId != 0)
           {
             DoSendUeDeregisterToGnb();
@@ -3412,7 +3412,7 @@ LteUeRrc::RadioLinkFailureDetected ()
         }
         else
         {
-          NS_LOG_UNCOND("No Handover has been scheduled, and a link still exists. Will perform beam sweep");
+          NS_LOG_UNCOND("No Handover has been scheduled, and a link still exists. Will perform beam sweep, IMSI: " << m_imsi);
           if (DynamicCast<NrUeNetDevice>(m_cphySapProvider.at(0)->GetNetDeviceFromPhy()) != nullptr)
           {
             if (m_beamSweepStarted.IsRunning())
@@ -3806,4 +3806,3 @@ LteUeRrc::StartBeamSweepTimer (bool iaState)
 }
 
 } // namespace ns3
-

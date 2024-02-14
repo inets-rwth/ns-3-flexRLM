@@ -101,8 +101,8 @@ nrInterference::ConditionallyEvaluateChunk ()
   if (m_receiving && (Now () > m_lastChangeTime))
     {
       NS_LOG_LOGIC (this << " signal = " << *m_rxSignal << " allSignals = " << *m_allSignals << " noise = " << *m_noise);
-      //SpectrumValue interf =  (*m_allSignals) - (*m_rxSignal) + (*m_noise);
-      SpectrumValue interf = (*m_noise);
+      SpectrumValue interf =  (*m_allSignals) - (*m_rxSignal) + (*m_noise);
+      //SpectrumValue interf = (*m_noise);
       SpectrumValue sinr = (*m_rxSignal) / interf;
       SpectrumValue snr = (*m_rxSignal) / (*m_noise);
       double avgSnr = Sum (snr) /(snr.GetSpectrumModel ()->GetNumBands ());
@@ -121,6 +121,10 @@ nrInterference::ConditionallyEvaluateChunk ()
       for (std::list<Ptr<LteChunkProcessor> >::const_iterator it = m_sinrChunkProcessorList.begin (); it != m_sinrChunkProcessorList.end (); ++it)
         {
           (*it)->EvaluateChunk (sinr, duration);
+        }
+      for (std::list<Ptr<LteChunkProcessor> >::const_iterator it = m_snrChunkProcessorList.begin (); it != m_snrChunkProcessorList.end (); ++it)
+        {
+          (*it)->EvaluateChunk (snr, duration);
         }
       m_lastChangeTime = Now ();
     }

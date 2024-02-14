@@ -119,6 +119,11 @@ public:
    */
   typedef std::function<void (const std::list<Ptr<NrControlMessage> > &, uint8_t)> NrPhyRxCtrlEndOkCallback;
   /**
+   * This method is used by the NrSpectrumPhy to notify the UE PHY that a
+   * PSS has been received
+   */
+  typedef Callback<void, uint16_t, const Ptr<SpectrumValue>&> NrPhyRxPssCallback;
+  /**
    * This callback method type is used by the NrSpectrumPhy to notify the PHY about
    * the status of a DL HARQ feedback
    */
@@ -139,6 +144,13 @@ public:
    * \param c the callback function
    */
   void SetPhyRxCtrlEndOkCallback (const NrPhyRxCtrlEndOkCallback& c);
+  /**
+   * set the callback for the reception of the PSS as part
+   * of the interconnections between the NrSpectrumPhy and the UE PHY
+   *
+   * @param c the callback
+   */
+  void SetPhyRxPssCallback(const NrPhyRxPssCallback& c);
   /**
    * \brief Sets the callback to be called when DL HARQ feedback is generated
    */
@@ -238,12 +250,34 @@ public:
    */
   void AddDataSinrChunkProcessor (const Ptr<LteChunkProcessor>& p);
   /**
+   * \brief Adds the chunk processor that will process the interference
+   * \param p the chunk processor
+   */
+  void AddDataSnrChunkProcessor (const Ptr<LteChunkProcessor>& p);
+  /**
+   * \brief Adds the chunk processor that will process the received power
+   * \param p the chunk processor
+   */
+  void AddDlCtrlSinrChunkProcessor(const Ptr<LteChunkProcessor>& p);
+  /**
    * \brief SpectrumPhy that will be called when the SINR for the received
    * DATA is being calculated by the interference object over DATA chunk
    * processor
    * \param sinr the resulting SINR spectrum value
    */
   void UpdateSinrPerceived (const SpectrumValue& sinr);
+  /**
+   * \brief SpectrumPhy that will be called when the SNR for the received
+   * DATA is being calculated by the interference object over DATA chunk
+   * processor
+   * \param snr the resulting SNR spectrum value
+   */
+  void UpdateSnrPerceived (const SpectrumValue& snr);
+  /**
+   * \brief Called when DlCtrlSinr is fired
+   * \param sinr the sinr PSD
+   */
+  void ReportDlCtrlSinr(const SpectrumValue& sinr);
   /**
    * \brief Install HARQ phy module of this spectrum phy
    * \param harq Harq module of this spectrum phy
@@ -253,7 +287,7 @@ public:
    * \brief Set NrPhy of this spectrum phy in order to be able
    * to obtain information such as cellId, bwpId, etc.
    */
-  void InstallPhy (const Ptr<const NrPhy> &phyModel);
+  void InstallPhy (const Ptr<NrPhy> &phyModel);
   /**
    * \return Returns ThreeGppAntennaArrayModel instance of this spectrum phy
    */
@@ -303,6 +337,18 @@ public:
   void SetIAState (bool iaContinues);
 
   double GetLastReceivedSNR (uint8_t cellId);
+
+  /**
+   * \brief Get stream id of this NrSpectrumPhy
+   *
+   * Stream id is introduced to support MIMO. In MIMO, there will be one
+   * NrSpectrumPhy instance per stream, hence, the NrHelper is responsible
+   * to assign the stream id to each new instance. Stream id, starts from
+   * 0 and ends at "total number of streams - 1".
+   *
+   * \return streamId The stream id
+   */
+  uint8_t GetStreamId() const;
 
 protected:
   /**
@@ -422,6 +468,8 @@ private:
     Ptr<NrErrorModelOutput> m_outputOfEM; //!< Output of the Error Model (depends on the EM type)
     double m_sinrAvg {0.0};               //!< AVG SINR (only for the RB used to transmit the TB)
     double m_sinrMin {0.0};               //!< MIN SINR (only between the RB used to transmit the TB)
+    double m_snrAvg {0.0};               //!< AVG SNR (only for the RB used to transmit the TB)
+    double m_snrMin {0.0};               //!< MIN SNR (only between the RB used to transmit the TB)
   };
 
   //attributes
@@ -436,9 +484,11 @@ private:
   Ptr<const SpectrumModel> m_rxSpectrumModel {nullptr}; //!< the spectrum model of this spectrum phy
   Ptr<MobilityModel> m_mobility {nullptr}; //!< the mobility model of the node to which belongs this spectrum phy
   Ptr<NetDevice> m_device {nullptr}; //!< the device to which belongs this spectrum phy
-  Ptr<const NrPhy> m_phy {nullptr}; //!< a pointer to phy instance to which belongs this spectrum phy
+  Ptr<NrPhy> m_phy {nullptr}; //!< a pointer to phy instance to which belongs this spectrum phy
   Ptr<NrHarqPhy> m_harqPhyModule {nullptr}; //!< the HARQ module of this spectrum phy instance
   Ptr<nrInterference> m_interferenceData {nullptr}; //!<the interference object used to calculate the interference for this spectrum phy
+  Ptr<nrInterference> m_interferenceCtrl{nullptr}; //!< the interference object used to calculate
+                                                     //!< the interference for this spectrum phy
   Ptr<SpectrumValue> m_txPsd {nullptr}; //!< tx power spectral density
   Ptr<UniformRandomVariable> m_random {nullptr}; //!< the random variable used for TB decoding
 
@@ -450,12 +500,14 @@ private:
   Time m_firstRxDuration {Seconds (0)}; //!< the duration of the current reception
   State m_state {IDLE}; //!<spectrum phy state
   SpectrumValue m_sinrPerceived; //!< SINR that is being update at the end of the DATA reception and is used for TB decoding
+  SpectrumValue m_snrPerceived; //!< SNR that is being update at the end of the DATA reception and is used for TB decoding
   EventId m_checkIfIsIdleEvent; //!< Event used to check if state should be switched from CCA_BUSY to IDLE.
   Time m_busyTimeEnds {Seconds (0)}; //!< Used to schedule switch from CCA_BUSY to IDLE, this is absolute time
 
   //callbacks for CTRL and DATA, and UL/DL HARQ
   NrPhyRxCtrlEndOkCallback m_phyRxCtrlEndOkCallback; //!< callback that is notified when the CTRL is received
   NrPhyRxDataEndOkCallback m_phyRxDataEndOkCallback; //!< callback that is notified when the DATA is received
+  NrPhyRxPssCallback m_phyRxPssCallback; ///< the phy receive PSS callback
   NrPhyDlHarqFeedbackCallback m_phyDlHarqFeedbackCallback; //!< callback that is notified when the DL HARQ feedback is being generated
   NrPhyUlHarqFeedbackCallback m_phyUlHarqFeedbackCallback; //!< callback that is notified when the UL HARQ feedback is being generated
 
@@ -471,6 +523,10 @@ private:
   bool m_IAcontinues;
   Ptr<SpectrumValue> m_noisePsd;
   std::map<uint8_t, double> m_lastCellToSNR;
+  uint8_t m_streamId{UINT8_MAX}; //!< StreamId of this NrSpectrumPhy instance
+  double m_interStrInerfRatio{0.0}; //!< The inter-stream interference ratio.
+
+  uint64_t m_imsi = 0;
 };
 
 }

@@ -58,7 +58,6 @@
 #include <ns3/ff-mac-scheduler.h>
 #include <ns3/lte-ffr-algorithm.h>
 
-// ADDED DURING MERGING
 #include <ns3/three-gpp-channel-model.h>
 #include <ns3/nr-mac-scheduler.h>
 #include <ns3/nr-mac-scheduler-ns3.h>
@@ -720,6 +719,15 @@ NrHelper::CreateUePhy (const Ptr<Node> &n, const std::unique_ptr<BandwidthPartIn
   pData->AddCallback (MakeCallback (&NrSpectrumPhy::UpdateSinrPerceived, channelPhy));
   channelPhy->AddDataSinrChunkProcessor (pData);
 
+  Ptr<LteChunkProcessor> pDataSnr = Create<LteChunkProcessor> ();
+  //pDataSnr->AddCallback (MakeCallback (&NrUePhy::GenerateDlCqiReport, phy));
+  pDataSnr->AddCallback (MakeCallback (&NrSpectrumPhy::UpdateSnrPerceived, channelPhy));
+  channelPhy->AddDataSnrChunkProcessor (pDataSnr);
+
+  Ptr<LteChunkProcessor> pSinr = Create<LteChunkProcessor>();
+  pSinr->AddCallback(MakeCallback(&NrSpectrumPhy::ReportDlCtrlSinr, channelPhy));
+  channelPhy->AddDlCtrlSinrChunkProcessor(pSinr);
+
   if (m_harqEnabled)
     {
       channelPhy->SetPhyDlHarqFeedbackCallback (dlHarqCallback);
@@ -735,6 +743,8 @@ NrHelper::CreateUePhy (const Ptr<Node> &n, const std::unique_ptr<BandwidthPartIn
 
   channelPhy->SetPhyRxDataEndOkCallback (MakeCallback (&NrUePhy::PhyDataPacketReceived, phy));
   channelPhy->SetPhyRxCtrlEndOkCallback (phyRxCtrlCallback);
+
+  channelPhy->SetPhyRxPssCallback(MakeCallback(&NrUePhy::ReceivePss, phy));
 
   phy->InstallSpectrumPhy (channelPhy);
   phy->InstallAntenna (antenna);
@@ -958,6 +968,13 @@ NrHelper::CreateGnbPhy (const Ptr<Node> &n, const std::unique_ptr<BandwidthPartI
       pData->AddCallback (MakeCallback (&NrSpectrumPhy::UpdateSinrPerceived, channelPhy));
     }
   channelPhy->AddDataSinrChunkProcessor (pData);
+
+  Ptr<LteChunkProcessor> pDataSnr = Create<LteChunkProcessor> ();
+  if (!m_snrTest)
+  {
+    pDataSnr->AddCallback (MakeCallback (&NrSpectrumPhy::UpdateSnrPerceived, channelPhy));
+  }
+  channelPhy->AddDataSnrChunkProcessor (pDataSnr);
 
   phy->SetDevice (dev);
 
@@ -1881,7 +1898,97 @@ NrHelper::EnableTraces (void)
   EnableMacThroughputTraces ();
   EnableBeamSweepTrace ();
   EnableRadioLinkMonitoringTrace ();
+
+  //tracing functions from NR Module version 2.3
+  //EnableDlDataPhyTraces();
+  EnableDlCtrlPhyTraces();
+  //EnableRlcSimpleTraces();
+  //EnableRlcE2eTraces();
+  //EnablePdcpSimpleTraces();
+  //EnablePdcpE2eTraces();
+  //EnableDlMacSchedTraces();
+  //EnableUlMacSchedTraces();
+  //EnablePathlossTraces();
 }
+
+
+//new helpers
+void NrHelper::EnableDlCtrlPhyTraces()
+{
+    // NS_LOG_FUNCTION_NOARGS ();
+    Config::Connect("/NodeList/*/DeviceList/*/ComponentCarrierMapUe/*/NrUePhy/DlCtrlSinr",
+                    MakeBoundCallback(&NrPhyRxTrace::DlCtrlSinrCallback, m_phyStats));
+}
+
+#if 0
+void
+NrHelper::EnableDlDataPhyTraces()
+{
+    // NS_LOG_FUNCTION_NOARGS ();
+    Config::Connect("/NodeList/*/DeviceList/*/ComponentCarrierMapUe/*/NrUePhy/DlDataSinr",
+                    MakeBoundCallback(&NrPhyRxTrace::DlDataSinrCallback, m_phyStats));
+
+    Config::Connect("/NodeList/*/DeviceList/*/ComponentCarrierMapUe/*/NrUePhy/NrSpectrumPhyList/*/"
+                    "RxPacketTraceUe",
+                    MakeBoundCallback(&NrPhyRxTrace::RxPacketTraceUeCallback, m_phyStats));
+}
+
+void
+NrHelper::EnableRlcSimpleTraces()
+{
+    Ptr<NrBearerStatsSimple> rlcStats = CreateObject<NrBearerStatsSimple>("RLC");
+    m_radioBearerStatsConnectorSimpleTraces.EnableRlcStats(rlcStats);
+}
+
+void
+NrHelper::EnableRlcE2eTraces()
+{
+    Ptr<NrBearerStatsCalculator> rlcStats = CreateObject<NrBearerStatsCalculator>("RLC");
+    m_radioBearerStatsConnectorCalculator.EnableRlcStats(rlcStats);
+}
+
+void
+NrHelper::EnablePdcpSimpleTraces()
+{
+    Ptr<NrBearerStatsSimple> pdcpStats = CreateObject<NrBearerStatsSimple>("PDCP");
+    m_radioBearerStatsConnectorSimpleTraces.EnablePdcpStats(pdcpStats);
+}
+
+void
+NrHelper::EnablePdcpE2eTraces()
+{
+    Ptr<NrBearerStatsCalculator> pdcpStats = CreateObject<NrBearerStatsCalculator>("PDCP");
+    m_radioBearerStatsConnectorCalculator.EnablePdcpStats(pdcpStats);
+}
+
+void
+NrHelper::EnableDlMacSchedTraces()
+{
+    NS_LOG_FUNCTION_NOARGS();
+    Config::Connect(
+        "/NodeList/*/DeviceList/*/BandwidthPartMap/*/NrGnbMac/DlScheduling",
+        MakeBoundCallback(&NrMacSchedulingStats::DlSchedulingCallback, m_macSchedStats));
+}
+
+void
+NrHelper::EnableUlMacSchedTraces()
+{
+    NS_LOG_FUNCTION_NOARGS();
+    Config::Connect(
+        "/NodeList/*/DeviceList/*/BandwidthPartMap/*/NrGnbMac/UlScheduling",
+        MakeBoundCallback(&NrMacSchedulingStats::UlSchedulingCallback, m_macSchedStats));
+}
+
+void
+NrHelper::EnablePathlossTraces()
+{
+    NS_LOG_FUNCTION_NOARGS();
+    Config::Connect("/ChannelList/*/$ns3::SpectrumChannel/PathLoss",
+                    MakeBoundCallback(&NrPhyRxTrace::PathlossTraceCallback, m_phyStats));
+}
+
+#endif
+//end new tracing functions
 
 void
 NrHelper::EnableBeamSweepTrace (void)
@@ -1911,6 +2018,9 @@ NrHelper::EnableDlPhyTrace (void)
   //NS_LOG_FUNCTION_NOARGS ();
   //Config::Connect ("/NodeList/*/DeviceList/*/ComponentCarrierMapUe/*/NrUePhy/ReportCurrentCellRsrpSinr",
   //                 MakeBoundCallback (&NrPhyRxTrace::ReportCurrentCellRsrpSinrCallback, m_phyStats));
+
+  Config::Connect ("/NodeList/*/DeviceList/*/ComponentCarrierMapUe/*/NrUePhy/ReportRsrp",
+                   MakeBoundCallback (&NrPhyRxTrace::RsrpCallback, m_phyStats));
 
   Config::Connect ("/NodeList/*/DeviceList/*/ComponentCarrierMapUe/*/NrUePhy/SpectrumPhy/RxPacketTraceUe",
                    MakeBoundCallback (&NrPhyRxTrace::RxPacketTraceUeCallback, m_phyStats));
@@ -2022,7 +2132,6 @@ NrHelper::GetPdcpStats (void)
   return m_pdcpStats;
 }
 
-// ADDED DURING MERGING
 std::string
 NrHelper::GetLteHandoverAlgorithmType () const
 {
@@ -2064,8 +2173,6 @@ NrHelper::AddBandwidthPart (uint32_t id, const BandwidthPartInfoPtr &bwpRepr)
   NS_ASSERT (id == bwpRepr->m_bwpId);
   m_bwpConfiguration.emplace (std::make_pair (id, *bwpRepr));
 }
-
-// ADDED DURING MERGING
 
 void
 NrHelper::EnableMacThroughputTraces (void)

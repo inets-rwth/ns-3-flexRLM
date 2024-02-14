@@ -50,6 +50,34 @@ public:
    */
   static void ReportCurrentCellRsrpSinrCallback (Ptr<NrPhyRxTrace> phyStats, std::string path,
                                                  uint16_t cellId, uint16_t rnti, double power, double avgSinr, uint16_t bwpId);
+  static void RsrpCallback([[maybe_unused]] Ptr<NrPhyRxTrace> phyStats,
+                                 [[maybe_unused]] std::string path, uint16_t cellId, uint16_t imsi, uint16_t rnti, double avgRsrp, uint8_t bwpId);
+  /**
+     * \brief Trace sink for DL Average SINR of CTRL (in dB).
+     * \param [in] phyStats NrPhyRxTrace object
+     * \param [in] path context path
+     * \param [in] cellId the cell ID
+     * \param [in] rnti the RNTI
+     * \param [in] avgSinr the average SINR
+     * \param [in] bwpId the BWP ID
+     * \param [in] streamId the stream ID
+     */
+  static void DlCtrlSinrCallback(Ptr<NrPhyRxTrace> phyStats,
+                                 std::string path,
+                                 uint16_t cellId,
+                                 uint16_t rnti,
+                                 uint64_t imsi,
+                                double avgSinr,
+                                 uint16_t bwpId,
+                                 uint8_t streamId);
+
+  static void SinrEstimateCallback(Ptr<NrPhyRxTrace> phyStats,
+                                 std::string path,
+                                 uint16_t cellId,
+                                 uint16_t rnti,
+                                 uint64_t imsi,
+                                 double avgSinr,
+                                 bool csirs);
   static void UlSinrTraceCallback (Ptr<NrPhyRxTrace> phyStats, std::string path,
                                    uint64_t imsi, SpectrumValue& sinr, SpectrumValue& power);
   static void ReportPacketCountUeCallback (Ptr<NrPhyRxTrace> phyStats, std::string path,
@@ -160,12 +188,13 @@ public:
                                              SfnSf sfn, uint16_t nodeId, uint16_t rnti,
                                              uint8_t bwpId, uint8_t harqId, uint32_t k1Delay);
 
-// ADDED DURING MERGING
-
 static void MacRxUe (Ptr<NrPhyRxTrace> phyStats, std::string path, uint16_t a, uint8_t b, uint32_t pktSize, SfnSf currentSlot, uint64_t imsi);
 void SetMacrxThruFilename ( std::string fileName);
 void SetOutputFilename (std::string fileName);
 void SetrxThruFilename (std::string fileName);
+void SetRsrpFilename (std::string fileName);
+void SetDlCtrlSinrFilename ( std::string fileName);
+void SetSinrEstimateFilename(std::string fileName);
 void SetBeamSweepFileName (std::string fileName);
 void SetRadioLinkMonitoringFileName ( std::string fileName);
 
@@ -186,6 +215,9 @@ private:
   static std::ofstream m_rxPacketTraceFile;
   static std::string m_rxPacketTraceFilename;
 
+  static std::ofstream m_rsrpFile;
+  static std::string m_rsrpFilename;
+
   static std::ofstream m_beamSweepTraceFile;
   static std::string m_beamSweepTraceFilename;
 
@@ -204,7 +236,6 @@ private:
   static std::ofstream m_rxedUePhyDlDciFile;
   static std::string m_rxedUePhyDlDciFileName;
 
-  // ADDED DURING MERGING
   static std::ofstream m_rxMacThruFile;
   static std::string m_rxMacThruFilename;
   static std::map<uint64_t, double> timeLastMacRx;

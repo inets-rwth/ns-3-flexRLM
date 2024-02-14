@@ -1073,6 +1073,9 @@ EpcX2::DoSendSpecificGnbBeamReport (EpcX2Sap::OptimalGnbBeamReportParams params)
 
   NS_ASSERT_MSG (m_x2InterfaceSockets.find (params.targetCellId) != m_x2InterfaceSockets.end (),
                  "Missing infos for targetCellId = " << params.targetCellId);
+
+  NS_ASSERT_MSG (params.numOfBeamsTbRlm <= params.optimalBeamIndex.size(),
+                 "numOfBeams out of bounds = " << std::to_string(params.numOfBeamsTbRlm));
   Ptr<X2IfaceInfo> socketInfo = m_x2InterfaceSockets [params.targetCellId];
   Ptr<Socket> sourceSocket = socketInfo->m_localUserPlaneSocket;
   Ipv4Address targetIpAddr = socketInfo->m_remoteIpAddr;

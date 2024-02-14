@@ -33,7 +33,6 @@
 #include <ns3/matrix-based-channel-model.h>
 #include <ns3/net-device.h>
 
-// ADDED DURING MERGING
 #include <ns3/output-stream-wrapper.h>
 
 namespace ns3 {
@@ -188,9 +187,6 @@ public:
    * \return the number of stream indices assigned by this model
    */
   int64_t AssignStreams (int64_t stream);
-
-
-  // ADDED DURING MERGING
   
   void SetSharedParams (std::vector<Vector> enbLocationsSM,
                         std::unordered_map<uint16_t, std::vector<Vector>> walkCords, 
@@ -358,8 +354,6 @@ private:
   static const uint8_t THETA_INDEX = 2; //!< index of the THETA value in the m_nonSelfBlocking array
   static const uint8_t Y_INDEX = 3; //!< index of the Y value in the m_nonSelfBlocking array
   static const uint8_t R_INDEX = 4; //!< index of the R value in the m_nonSelfBlocking array
-
-  // ADDED DURING MERGING
 
   std::string input_files_folder;
   mutable std::vector<Vector> enbLocations; // locations of all the ENB

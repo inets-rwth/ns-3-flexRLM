@@ -232,6 +232,22 @@ class Packet : public SimpleRefCount<Packet>
 {
 public:
 
+  void SetPort(int port){
+    m_port = port;
+  }
+
+  int GetPort() const{
+    return m_port;
+  }
+
+  void SetDAddr(int daddr){
+    m_daddr = daddr;
+  }
+
+  int GetDAddr() const{
+    return m_daddr;
+  }
+
   /**
    * \brief Create an empty packet with a new uid (as returned
    * by getUid).
@@ -783,6 +799,9 @@ private:
   ByteTagList m_byteTagList;      //!< the ByteTag list
   PacketTagList m_packetTagList;  //!< the packet's Tag list
   PacketMetadata m_metadata;      //!< the packet's metadata
+
+  int m_port = 0;
+  int m_daddr = 0;
 
   /* Please see comments above about nix-vector */
   Ptr<NixVector> m_nixVector; //!< the packet's Nix vector

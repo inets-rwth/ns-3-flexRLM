@@ -33,7 +33,6 @@
 #include "ideal-beamforming-helper.h"
 #include "cc-bwp-helper.h"
 
-// ADDED DURING MERGING
 #include <ns3/three-gpp-channel-model.h>
 
 namespace ns3 {
@@ -725,6 +724,11 @@ public:
   void SetDlErrorModel (const std::string & errorModelTypeId);
 
   /**
+   * \brief Enable DL CTRL PHY traces
+   */
+  void EnableDlCtrlPhyTraces();
+
+  /**
   * Set the type of FFR algorithm to be used by LTE eNodeB devices.
   *
   * \param type type of FFR algorithm, must be a type name of any class
@@ -742,8 +746,6 @@ public:
    *
    */
   void SetLteEnbComponentCarrierManagerType (std::string type);
-
-  // ADDED DURING MERGING
 
   void SetLtePathlossModelType (std::string type);
 
@@ -913,8 +915,6 @@ private:
    * eNodeB and MC-UE devices.
    */
   uint16_t m_noOfLteCcs;
-
-  //ADDED DURING MERGING
 
   void EnableMacThroughputTraces (void);
 

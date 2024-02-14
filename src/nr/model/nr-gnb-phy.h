@@ -25,7 +25,6 @@
 #include <ns3/nr-harq-phy.h>
 #include <functional>
 #include "ns3/ideal-beamforming-helper.h"
-#include <ns3/nr-mac-scheduler.h>
 #include <ns3/nr-mac-scheduler-ns3.h>
 #include <ns3/nr-ue-net-device.h>
 #include <ns3/nr-helper.h>
@@ -854,9 +853,7 @@ private:
   SfnSf m_currentSlot;      //!< The current slot number
   bool m_isPrimary {false}; //!< Is this PHY a primary phy?
   
-  // ADDED DURING MERGING
   Ptr<IdealBeamformingHelper> m_phyIdealBeamformingHelper;
-  
 
   Ptr<NrMacSchedulerNs3> m_sched;
 

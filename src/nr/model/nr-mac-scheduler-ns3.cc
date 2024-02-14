@@ -1583,7 +1583,7 @@ NrMacSchedulerNs3::ScheduleDl (const NrMacSchedSapProvider::SchedDlTriggerReqPar
   else
   {
     SetDlCtrlSyms (1);
-  }  
+  }
 
   // add slot for DL control, at symbol 0
   PrependCtrlSym (0, m_dlCtrlSymbols, DciInfoElementTdma::DL,
@@ -1685,6 +1685,18 @@ NrMacSchedulerNs3::ScheduleUl (const NrMacSchedSapProvider::SchedUlTriggerReqPar
   ulSlot.m_slotAllocInfo.m_sfnSf = params.m_snfSf;
   ulSlot.m_slotAllocInfo.m_type = SlotAllocInfo::UL;
 
+  //has to be executed here, so UL allocation can be done correctly
+  std::pair<std::pair<bool, bool>, std::pair<uint64_t, uint8_t>> boolImsiPair = m_macSchedSapUser->IsCSIRSRequired (params.m_snfSf);
+  if (boolImsiPair.first.first)
+  {
+    SetDlCtrlSyms (2);  //In addition to the CTRL Symbol that is used for MIB/SIB,
+                        //CSI RS will also be allocated 
+  }
+  else
+  {
+    SetDlCtrlSyms (1);
+  }
+
   // add slot for UL control, at last symbol, for slot type F and UL.
   AppendCtrlSym (static_cast<uint8_t> (m_macSchedSapUser->GetSymbolsPerSlot () - 1),
                  m_ulCtrlSymbols, DciInfoElementTdma::UL,
@@ -1692,7 +1704,7 @@ NrMacSchedulerNs3::ScheduleUl (const NrMacSchedSapProvider::SchedUlTriggerReqPar
   ulSlot.m_slotAllocInfo.m_numSymAlloc += m_ulCtrlSymbols;
 
   // Doing UL for slot ulSlot
-  DoScheduleUl (ulHarqFeedback, params.m_snfSf, &ulSlot.m_slotAllocInfo, params.m_slotType);
+  DoScheduleUl (ulHarqFeedback, params.m_snfSf, &ulSlot.m_slotAllocInfo, params.m_slotType, m_dlCtrlSymbols);
 
   NS_LOG_INFO ("Total DCI for UL : " << ulSlot.m_slotAllocInfo.m_varTtiAllocInfo.size () <<
                " including UL CTRL");
@@ -1739,7 +1751,7 @@ NrMacSchedulerNs3::ScheduleUl (const NrMacSchedSapProvider::SchedUlTriggerReqPar
 uint8_t
 NrMacSchedulerNs3::DoScheduleUl (const std::vector <UlHarqInfo> &ulHarqFeedback,
                                      const SfnSf &ulSfn, SlotAllocInfo *allocInfo,
-                                     LteNrTddSlotType type)
+                                     LteNrTddSlotType type, uint8_t dlCtrlSymbols)
 {
   NS_LOG_FUNCTION (this);
 
@@ -1769,124 +1781,126 @@ NrMacSchedulerNs3::DoScheduleUl (const std::vector <UlHarqInfo> &ulHarqFeedback,
                 " starting from (" << +ulAssignationStartPoint.m_rbg << ", " <<
                 +ulAssignationStartPoint.m_sym << ")");
 
-  if (activeUlHarq.size () > 0)
+  // If this slot is used for SSB reception, don't allow scheduling!
+  if (!m_macSchedSapUser->IsSSBRequired(ulSfn))
+  {
+    if (activeUlHarq.size() > 0)
     {
-      uint8_t usedHarq = ScheduleUlHarq (&ulAssignationStartPoint, ulSymAvail,
-                                         m_ueMap, &m_ulHarqToRetransmit, ulHarqFeedback,
-                                         allocInfo);
-      NS_ASSERT_MSG (ulSymAvail >= usedHarq, "Available: " << +ulSymAvail <<
-                     " used by HARQ: " << +usedHarq);
-      NS_LOG_INFO ("For the slot " << ulSfn << " reserved " <<
-                   static_cast<uint32_t> (usedHarq) << " symbols for UL HARQ retx");
+      uint8_t usedHarq = ScheduleUlHarq(&ulAssignationStartPoint, ulSymAvail,
+                                        m_ueMap, &m_ulHarqToRetransmit, ulHarqFeedback,
+                                        allocInfo);
+      NS_ASSERT_MSG(ulSymAvail >= usedHarq, "Available: " << +ulSymAvail << " used by HARQ: " << +usedHarq);
+      NS_LOG_INFO("For the slot " << ulSfn << " reserved " << static_cast<uint32_t>(usedHarq) << " symbols for UL HARQ retx");
       ulSymAvail -= usedHarq;
     }
 
-  NS_ASSERT (ulAssignationStartPoint.m_rbg == 0);
+    NS_ASSERT(ulAssignationStartPoint.m_rbg == 0);
 
-  if (ulSymAvail > 0 && m_srList.size () > 0)
+    if (ulSymAvail > 0 && m_srList.size() > 0)
     {
-      DoScheduleUlSr (&ulAssignationStartPoint, m_srList);
-      m_srList.clear ();
+      DoScheduleUlSr(&ulAssignationStartPoint, m_srList);
+      m_srList.clear();
     }
 
-  ActiveUeMap activeUlUe;
-  ComputeActiveUe (&activeUlUe, &NrMacSchedulerUeInfo::GetUlLCG,
-                   &NrMacSchedulerUeInfo::GetUlHarqVector, "UL");
+    ActiveUeMap activeUlUe;
+    ComputeActiveUe(&activeUlUe, &NrMacSchedulerUeInfo::GetUlLCG,
+                    &NrMacSchedulerUeInfo::GetUlHarqVector, "UL");
 
-  GetSecond GetUeInfoList;
-  for (const auto & alloc : allocInfo->m_varTtiAllocInfo)
+    GetSecond GetUeInfoList;
+    for (const auto &alloc : allocInfo->m_varTtiAllocInfo)
     {
-      for (auto it = activeUlUe.begin(); it != activeUlUe.end (); ++it)
+      for (auto it = activeUlUe.begin(); it != activeUlUe.end(); ++it)
+      {
+        auto &ueInfos = GetUeInfoList(*it);
+        for (auto ueIt = ueInfos.begin(); ueIt != ueInfos.end(); /* no incr */)
         {
-          auto & ueInfos = GetUeInfoList(*it);
-          for (auto ueIt = ueInfos.begin(); ueIt != ueInfos.end(); /* no incr */)
-            {
-              GetFirst GetUeInfoPtr;
-              if (GetUeInfoPtr (*ueIt)->m_rnti == alloc.m_dci->m_rnti)
-                {
-                  NS_LOG_INFO ("Removed RNTI " << alloc.m_dci->m_rnti << " from active ue list "
-                               "because it has already an HARQ scheduled");
-                  ueInfos.erase (ueIt);
-                  break;
-                }
-              else
-                {
-                  ++ueIt;
-                }
-            }
+          GetFirst GetUeInfoPtr;
+          if (GetUeInfoPtr(*ueIt)->m_rnti == alloc.m_dci->m_rnti)
+          {
+            NS_LOG_INFO("Removed RNTI " << alloc.m_dci->m_rnti << " from active ue list "
+                        "because it has already an HARQ scheduled");
+            ueInfos.erase(ueIt);
+            break;
+          }
+          else
+          {
+            ++ueIt;
+          }
         }
+      }
     }
 
-  if (ulSymAvail > 0 && activeUlUe.size () > 0)
+    if (ulSymAvail > 0 && activeUlUe.size() > 0)
     {
-      uint8_t usedUl = DoScheduleUlData (&ulAssignationStartPoint, ulSymAvail,
-                                         activeUlUe, allocInfo);
-      NS_LOG_INFO ("For the slot " << ulSfn << " reserved " <<
-                   static_cast<uint32_t> (usedUl) << " symbols for UL data tx");
+      uint8_t usedUl = DoScheduleUlData(&ulAssignationStartPoint, ulSymAvail,
+                                        activeUlUe, allocInfo);
+      NS_LOG_INFO("For the slot " << ulSfn << " reserved " << static_cast<uint32_t>(usedUl) << " symbols for UL data tx");
       ulSymAvail -= usedUl;
     }
 
-  std::vector<uint32_t> symToAl;
-  symToAl.resize (15, 0);
+    std::vector<uint32_t> symToAl;
+    symToAl.resize(15, 0);
 
-  auto & totUlSym = m_ulAllocationMap.at (ulSfn.GetEncoding ()).m_totUlSym;
-  auto & allocations = m_ulAllocationMap.at (ulSfn.GetEncoding ()).m_ulAllocations;
-  for (const auto &alloc : allocInfo->m_varTtiAllocInfo)
+    auto &totUlSym = m_ulAllocationMap.at(ulSfn.GetEncoding()).m_totUlSym;
+    auto &allocations = m_ulAllocationMap.at(ulSfn.GetEncoding()).m_ulAllocations;
+    for (const auto &alloc : allocInfo->m_varTtiAllocInfo)
     {
       if (alloc.m_dci->m_format == DciInfoElementTdma::UL)
-        {
-          // Here we are assuming (with the assignment) that all the
-          // allocations starting at a particular symbol will have the same
-          // length.
-          symToAl[alloc.m_dci->m_symStart] = alloc.m_dci->m_numSym;
-          NS_LOG_INFO ("UL Allocation. RNTI " <<
-                       alloc.m_dci->m_rnti << ", symStart " <<
-                       static_cast<uint32_t>(alloc.m_dci->m_symStart) <<
-                       " numSym " << +alloc.m_dci->m_numSym);
+      {
+        // Here we are assuming (with the assignment) that all the
+        // allocations starting at a particular symbol will have the same
+        // length.
+        symToAl[alloc.m_dci->m_symStart] = alloc.m_dci->m_numSym;
+        NS_LOG_INFO("UL Allocation. RNTI " << alloc.m_dci->m_rnti << ", symStart " << static_cast<uint32_t>(alloc.m_dci->m_symStart) << " numSym " << +alloc.m_dci->m_numSym);
 
-          if (alloc.m_dci->m_type == DciInfoElementTdma::DATA)
+        if (alloc.m_dci->m_type == DciInfoElementTdma::DATA)
+        {
+          uint16_t rbgStart = UINT16_MAX, numRbg = 0;
+          for (uint16_t i = 0; i < alloc.m_dci->m_rbgBitmask.size(); ++i)
+          {
+            if (alloc.m_dci->m_rbgBitmask[i] == 1)
             {
-              uint16_t rbgStart = UINT16_MAX, numRbg = 0;
-              for (uint16_t i = 0; i < alloc.m_dci->m_rbgBitmask.size (); ++i)
-                {
-                  if (alloc.m_dci->m_rbgBitmask[i] == 1)
-                    {
-                      numRbg++;
-                      if (i < rbgStart)
-                        {
-                          rbgStart = i;
-                        }
-                    }
-                }
-              NS_LOG_INFO ("Placed the above allocation, that starts at " << rbgStart <<
-                           " and finishes at " << rbgStart + numRbg << " in the CQI map");
-              allocations.emplace_back (AllocElem (alloc.m_dci->m_rnti,
-                                                   alloc.m_dci->m_tbSize,
-                                                   alloc.m_dci->m_symStart,
-                                                   alloc.m_dci->m_numSym,
-                                                   alloc.m_dci->m_mcs,
-                                                   rbgStart, numRbg));
+              numRbg++;
+              if (i < rbgStart)
+              {
+                rbgStart = i;
+              }
             }
+          }
+          NS_LOG_INFO("Placed the above allocation, that starts at " << rbgStart << " and finishes at " << rbgStart + numRbg << " in the CQI map");
+          allocations.emplace_back(AllocElem(alloc.m_dci->m_rnti,
+                                             alloc.m_dci->m_tbSize,
+                                             alloc.m_dci->m_symStart,
+                                             alloc.m_dci->m_numSym,
+                                             alloc.m_dci->m_mcs,
+                                             rbgStart, numRbg));
         }
+      }
     }
 
-  for (const auto & v : symToAl)
+    for (const auto &v : symToAl)
     {
       totUlSym += v;
     }
 
-  NS_ASSERT_MSG ((dataSymPerSlot + m_ulCtrlSymbols) - ulSymAvail == totUlSym,
-                 "UL symbols available: " << static_cast<uint32_t> (dataSymPerSlot + m_ulCtrlSymbols) <<
-                 " UL symbols available at end of sched: " << static_cast<uint32_t> (ulSymAvail) <<
-                 " total of symbols registered in the allocation: " << static_cast<uint32_t> (totUlSym) <<
-                 " slot type " << type);
+    NS_ASSERT_MSG((dataSymPerSlot + m_ulCtrlSymbols) - ulSymAvail == totUlSym,
+                "UL symbols available: " << static_cast<uint32_t>(dataSymPerSlot + m_ulCtrlSymbols) <<
+                " UL symbols available at end of sched: " << static_cast<uint32_t>(ulSymAvail) <<
+                " total of symbols registered in the allocation: " << static_cast<uint32_t>(totUlSym) <<
+                " slot type " << type);
 
-  NS_LOG_INFO ("For the slot " << ulSfn << " registered a total of " <<
-               static_cast<uint32_t> (totUlSym) <<
-               " symbols and " << allocations.size () << " data allocations, with a total of " <<
-               allocInfo->m_varTtiAllocInfo.size ());
-  NS_ASSERT (m_ulAllocationMap.at (ulSfn.GetEncoding ()).m_totUlSym == totUlSym);
+    NS_LOG_INFO("For the slot " << ulSfn << " registered a total of " << static_cast<uint32_t>(totUlSym) << " symbols and " << allocations.size() << " data allocations, with a total of " << allocInfo->m_varTtiAllocInfo.size());
+    NS_ASSERT(m_ulAllocationMap.at(ulSfn.GetEncoding()).m_totUlSym == totUlSym);
 
+    //enter symbols into map
+    m_ulAllocationMap.at(ulSfn.GetEncoding()).m_dlCtrlSymbols = dlCtrlSymbols;
+
+  }
+  else
+  {
+    // Slot used for SSB, don't schedule anything!
+    ulSymAvail -= ulSymAvail;
+  }
   return dataSymPerSlot - ulSymAvail;
 }
 

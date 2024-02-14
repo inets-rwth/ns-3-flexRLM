@@ -1842,8 +1842,6 @@ private:
 
   std::map<uint8_t, Ptr<ComponentCarrierBaseStation>> m_componentCarrierPhyConf; ///< component carrier phy configuration
 
-  // Added during merging
-
   ///Cell identifier.Must be unique across the simulation
   uint16_t m_cellId;
 

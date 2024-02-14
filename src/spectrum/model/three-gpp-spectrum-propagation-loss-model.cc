@@ -34,7 +34,6 @@
 #include "ns3/node.h"
 #include <ns3/nr-gnb-phy.h>
 
-// ADDED DURING MERGING
 #include <ns3/three-gpp-channel-model.h>
 #include <random>
 
@@ -529,8 +528,6 @@ ThreeGppSpectrumPropagationLossModel::DoCalcRxPowerSpectralDensity (Ptr<const Sp
   return bfPsd;
 }
 
-// ADDED DURING MERGING
-
 void 
 ThreeGppSpectrumPropagationLossModel::LoadAllTraceData (NetDeviceContainer ueNetDev, std::vector<uint16_t> walkId, std::string input_raytracing_folder)
 {
@@ -583,6 +580,7 @@ ThreeGppSpectrumPropagationLossModel::LoadAllTraceData (NetDeviceContainer ueNet
     std::string speed_file = input_raytracing_folder + std::to_string(ueWalkId) + "_speed.txt";
     std::string los_file = input_raytracing_folder + std::to_string(ueWalkId) + "_ped.txt";
 
+    NS_LOG_INFO("Loading the walk and pedestrian blockage data");
     LoadWalkInfo(walk_file, speed_file, imsi);
     //LoadLosInfo(los_file, imsi);
   }

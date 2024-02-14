@@ -274,7 +274,6 @@ private:
   */
   void DoReportBufferStatus (LteMacSapProvider::ReportBufferStatusParameters params);
 
-  // ADDED DURING MERGING
   void DoSetRAProcessFlag (bool raProcessContinuing);
 
   // forwarded from FfMacCchedSapUser

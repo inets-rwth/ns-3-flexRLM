@@ -468,6 +468,7 @@ struct RxPacketTraceParams
   uint32_t m_tbSize;
   uint8_t m_mcs;
   uint8_t m_rv;
+  double m_snr;
   double m_sinr;
   double m_sinrMin;
   double m_tbler;

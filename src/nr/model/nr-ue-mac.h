@@ -469,8 +469,6 @@ private:
    */
   TracedCallback<SfnSf, uint16_t, uint16_t, uint8_t, Ptr<const NrControlMessage>> m_macTxedCtrlMsgsTrace;
 
-  // ADDED DURING MERGING
-
   TracedCallback<uint16_t, uint8_t, uint32_t, SfnSf, uint64_t> m_macRxedPacketTrace;
   TracedCallback<uint16_t, uint8_t, uint32_t> m_macTxedPacketTrace;
 };

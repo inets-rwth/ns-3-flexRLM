@@ -47,7 +47,6 @@
 #include <ns3/boolean.h>
 #include "beam-manager.h"
 
-// Headers added during merging
 #include <ns3/nr-spectrum-value-helper.h>
 #include <ns3/three-gpp-channel-model.h>
 #include <ns3/three-gpp-spectrum-propagation-loss-model.h>
@@ -679,7 +678,6 @@ NrGnbPhy::SetSubChannels (const std::vector<int> &rbIndexVector)
   m_spectrumPhy->SetTxPowerSpectralDensity (txPsd);
 }
 
-// Added during merging
 void 
 NrGnbPhy::UpdateUeSinrEstimate ()
 {
@@ -2232,7 +2230,7 @@ NrGnbPhy::ChannelAccessLost ()
   NS_LOG_INFO ("Channel access lost");
   m_channelStatus = NONE;
 }
-// ADDED DURING MERGING
+
 void
 NrGnbPhy::SetPhyIdealBeamformingHelper (Ptr<IdealBeamformingHelper> idealBeamformingHelper)
 {

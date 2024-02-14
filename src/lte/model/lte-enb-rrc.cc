@@ -4153,7 +4153,7 @@ LteEnbRrc::DoRecvOptimalGnbBeamMap (LteRrcSap::CellOptimalGnbBeamMap msg)
   uint8_t csiCounter = 0;
   std::vector<uint8_t> gnbRlmBeams(msg.cellOptimalBeamMap.size(), 0);
   std::map<uint8_t, std::vector<uint8_t>> mapOfCsiCounter;
-  uint8_t noOfBeamsTbRLM = msg.cellOptimalBeamMap.at(1).size();
+  uint8_t noOfBeamsTbRLM = msg.cellOptimalBeamMap.begin()->second.size();
 
   if (m_rlmMultiGnb) // montior beams from multiple cells
   {
@@ -4315,7 +4315,7 @@ LteEnbRrc::DoRecvOptimalGnbBeamMap (LteRrcSap::CellOptimalGnbBeamMap msg)
       }
       params.optimalBeamIndex = tmp_optimalBeamIndex;
       
-      if (maxCellId == iter.first)
+      if (maxCellId-iter.first <= 1)
       {
         params.isServingCell = true;
       }

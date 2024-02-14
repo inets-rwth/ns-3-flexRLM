@@ -228,8 +228,6 @@ ThreeGppAntennaArrayModel::GetNumberOfElements (void) const
   return m_numRows * m_numColumns;
 }
 
-// ADDED DURING MERGING
-
 double
 ThreeGppAntennaArrayModel::GetGainDb (Angles angle)
 {

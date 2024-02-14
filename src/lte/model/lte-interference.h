@@ -62,6 +62,15 @@ public:
   virtual void AddSinrChunkProcessor (Ptr<LteChunkProcessor> p);
 
   /**
+   * \brief Add a LteChunkProcessor that will use the time-vs-frequency SNR
+   * calculated by this LteInterference instance. Note that all the
+   * added LteChunkProcessors will work in parallel.
+   *
+   * @param p
+   */
+  virtual void AddSnrChunkProcessor (Ptr<LteChunkProcessor> p);
+
+  /**
    * \brief Add a LteChunkProcessor that will use the time-vs-frequency
    * interference calculated by this LteInterference instance. Note
    * that all the added LteChunkProcessors will work in parallel.
@@ -158,6 +167,10 @@ protected:
       a new SINR chunk is calculated */
   std::list<Ptr<LteChunkProcessor> > m_sinrChunkProcessorList;
 
+  /** all the processor instances that need to be notified whenever
+      a new SNR chunk is calculated */
+  std::list<Ptr<LteChunkProcessor> > m_snrChunkProcessorList;
+  
   /** all the processor instances that need to be notified whenever
       a new interference chunk is calculated */
   std::list<Ptr<LteChunkProcessor> > m_interfChunkProcessorList;

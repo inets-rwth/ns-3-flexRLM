@@ -26,6 +26,7 @@
 #include "nr-gnb-net-device.h"
 #include "nr-ue-net-device.h"
 #include "nr-lte-mi-error-model.h"
+#include "nr-ue-phy.h"
 
 
 namespace ns3 {
@@ -66,6 +67,7 @@ NrSpectrumPhy::NrSpectrumPhy ()
   : SpectrumPhy ()
 {
   m_interferenceData = CreateObject<nrInterference> ();
+  m_interferenceCtrl = CreateObject<nrInterference> ();
   m_random = CreateObject<UniformRandomVariable> ();
   m_random->SetAttribute ("Min", DoubleValue (0.0));
   m_random->SetAttribute ("Max", DoubleValue (1.0));
@@ -92,7 +94,13 @@ NrSpectrumPhy::DoDispose ()
       m_interferenceData->Dispose ();
     }
 
+  if (m_interferenceCtrl)
+    {
+        m_interferenceCtrl->Dispose();
+    }
+
   m_interferenceData = nullptr;
+  m_interferenceCtrl = nullptr;
   m_mobility = nullptr;
   m_phy = nullptr;
 
@@ -182,6 +190,13 @@ NrSpectrumPhy::SetPhyRxCtrlEndOkCallback (const NrPhyRxCtrlEndOkCallback &c)
 {
   NS_LOG_FUNCTION (this);
   m_phyRxCtrlEndOkCallback = c;
+}
+
+void
+NrSpectrumPhy::SetPhyRxPssCallback(const NrPhyRxPssCallback& c)
+{
+    NS_LOG_FUNCTION(this);
+    m_phyRxPssCallback = c;
 }
 
 void
@@ -290,6 +305,7 @@ NrSpectrumPhy::SetNoisePowerSpectralDensity (const Ptr<const SpectrumValue>& noi
   m_noisePsd = noisePsd->Copy();
   m_rxSpectrumModel = noisePsd->GetSpectrumModel ();
   m_interferenceData->SetNoisePowerSpectralDensity (noisePsd);
+  m_interferenceCtrl->SetNoisePowerSpectralDensity(noisePsd);
   if (m_channel)
     {
       m_channel->AddRx (this);
@@ -351,6 +367,7 @@ NrSpectrumPhy::StartRx (Ptr<SpectrumSignalParameters> params)
   }
   else if (dlCtrlRxParams != nullptr)
   {
+    m_interferenceCtrl->AddSignal(rxPsd, duration);
     if (!IsEnb())
     {
       double antennaGainLinear = std::pow(10.0,
@@ -359,6 +376,9 @@ NrSpectrumPhy::StartRx (Ptr<SpectrumSignalParameters> params)
                                               10.0);
       SpectrumValue sinr = *(rxPsd)*antennaGainLinear / (*m_noisePsd);
       dlCtrlRxParams->sinrAvg = Sum(sinr) / (sinr.GetSpectrumModel()->GetNumBands());
+
+      double snr = 10*log10(dlCtrlRxParams->sinrAvg);
+      double imsi = DynamicCast<NrUeNetDevice>(m_device)->GetImsi();
 
       if (dlCtrlRxParams->isSSB || dlCtrlRxParams->isCSIRS)
       {
@@ -372,8 +392,31 @@ NrSpectrumPhy::StartRx (Ptr<SpectrumSignalParameters> params)
         }
       }
 
-      if (dlCtrlRxParams->cellId == GetCellId() || dlCtrlRxParams->isSSB || dlCtrlRxParams->isCSIRS)
+      if (dlCtrlRxParams->pss == true)
       {
+        if (dlCtrlRxParams->cellId == GetCellId())
+        {
+            NS_LOG_DEBUG(
+                "Receiving PSS from Serving Cell with Id: " << dlCtrlRxParams->cellId);
+        }
+        else
+        {
+            NS_LOG_DEBUG(
+                "Receiving PSS from Neighbor Cell with Id: " << dlCtrlRxParams->cellId);
+        }
+
+        if (!m_phyRxPssCallback.IsNull())
+        {
+            m_phyRxPssCallback(dlCtrlRxParams->cellId, dlCtrlRxParams->psd);
+        }
+      }
+
+      if ((dlCtrlRxParams->cellId == GetCellId() || dlCtrlRxParams->isSSB || dlCtrlRxParams->isCSIRS) &&
+          dlCtrlRxParams->txPhy->GetObject<NrSpectrumPhy>()->GetStreamId() == m_streamId) //Needed as SSB & CSIRS can be received by all stations
+      {
+        if(!(dlCtrlRxParams->isSSB || dlCtrlRxParams->isCSIRS)){
+            m_interferenceCtrl->StartRx(rxPsd);
+          }
         StartRxDlCtrl(dlCtrlRxParams);
       }
       else
@@ -613,11 +656,44 @@ NrSpectrumPhy::AddDataSinrChunkProcessor (const Ptr<LteChunkProcessor>& p)
 }
 
 void
+NrSpectrumPhy::AddDataSnrChunkProcessor (const Ptr<LteChunkProcessor>& p)
+{
+  NS_LOG_FUNCTION (this);
+  m_interferenceData->AddSnrChunkProcessor (p);
+}
+
+void
+NrSpectrumPhy::ReportDlCtrlSinr(const SpectrumValue& sinr)
+{
+    NS_LOG_FUNCTION(this);
+    Ptr<NrUePhy> phy = (DynamicCast<NrUePhy>(m_phy));
+    NS_ABORT_MSG_UNLESS(
+        phy,
+        "This function should only be called for NrSpectrumPhy belonging to NrUEPhy");
+    phy->ReportDlCtrlSinr(sinr, m_streamId);
+}
+
+void
+NrSpectrumPhy::AddDlCtrlSinrChunkProcessor(const Ptr<LteChunkProcessor>& p)
+{
+    NS_LOG_FUNCTION(this);
+    m_interferenceCtrl->AddSinrChunkProcessor(p);
+}
+
+void
 NrSpectrumPhy::UpdateSinrPerceived (const SpectrumValue& sinr)
 {
   NS_LOG_FUNCTION (this << sinr);
   NS_LOG_LOGIC ("Update SINR perceived with this value: " << sinr);
   m_sinrPerceived = sinr;
+}
+
+void
+NrSpectrumPhy::UpdateSnrPerceived (const SpectrumValue& snr)
+{
+  NS_LOG_FUNCTION (this << snr);
+  NS_LOG_LOGIC ("Update SNR perceived with this value: " << snr);
+  m_snrPerceived = snr;
 }
 
 void
@@ -628,7 +704,7 @@ NrSpectrumPhy::InstallHarqPhyModule (const Ptr<NrHarqPhy>& harq)
 }
 
 void
-NrSpectrumPhy::InstallPhy (const Ptr<const NrPhy> &phyModel)
+NrSpectrumPhy::InstallPhy (const Ptr<NrPhy> &phyModel)
 {
   m_phy = phyModel;
 }
@@ -681,6 +757,11 @@ NrSpectrumPhy::AddExpectedTb (uint16_t rnti, uint8_t ndi, uint32_t size, uint8_t
                static_cast<uint32_t> (numSym));
 }
 
+uint8_t
+NrSpectrumPhy::GetStreamId() const
+{
+    return m_streamId;
+}
 
 // private
 
@@ -964,6 +1045,20 @@ NrSpectrumPhy::EndRxData ()
                    " sinrMin=" << GetTBInfo(tbIt).m_sinrMin <<
                    " SinrAvg (dB) " << 10 * log (GetTBInfo(tbIt).m_sinrAvg) / log (10));
 
+      //repeat calculation for snr
+      GetTBInfo(tbIt).m_snrAvg = 0.0;
+      GetTBInfo(tbIt).m_snrMin = 99999999999;
+      for (const auto & rbIndex : GetTBInfo(tbIt).m_expected.m_rbBitmap)
+      {
+        GetTBInfo(tbIt).m_snrAvg += m_snrPerceived.ValuesAt (rbIndex);
+        if (m_snrPerceived.ValuesAt (rbIndex) < GetTBInfo(tbIt).m_snrMin)
+        {
+          GetTBInfo(tbIt).m_snrMin = m_snrPerceived.ValuesAt (rbIndex);
+        }
+      }
+      GetTBInfo(tbIt).m_snrAvg = GetTBInfo(tbIt).m_snrAvg / GetTBInfo(tbIt).m_expected.m_rbBitmap.size ();
+      GetTBInfo(tbIt).m_snrAvg *= (ConstCast<ThreeGppAntennaArrayModel> (GetAntennaArray ())->GetGainDb ()) * 2;
+
       if ((!m_dataErrorModelEnabled) || (m_rxPacketBurstList.empty ()))
         {
           continue;
@@ -1058,6 +1153,7 @@ NrSpectrumPhy::EndRxData ()
           traceParams.m_rnti = rnti;
           traceParams.m_mcs = GetTBInfo(*itTb).m_expected.m_mcs;
           traceParams.m_rv = GetTBInfo(*itTb).m_expected.m_rv;
+          traceParams.m_snr = GetTBInfo(*itTb).m_snrAvg;
           traceParams.m_sinr = GetTBInfo(*itTb).m_sinrAvg;
           traceParams.m_sinrMin = GetTBInfo(*itTb).m_sinrMin;
           traceParams.m_tbler = GetTBInfo(*itTb).m_outputOfEM->m_tbler;
@@ -1074,7 +1170,7 @@ NrSpectrumPhy::EndRxData ()
             }
           else if (ueRx)
             {
-              traceParams.m_imsi = ueRx->GetImsi();;
+              traceParams.m_imsi = ueRx->GetImsi();
               traceParams.m_cellId = ueRx->GetTargetEnb ()->GetCellId ();
               m_rxPacketTraceUe (traceParams);
             }
@@ -1191,6 +1287,8 @@ NrSpectrumPhy::EndRxCtrl ()
 {
   NS_LOG_FUNCTION (this);
   NS_ASSERT (m_state == RX_DL_CTRL || m_state == RX_UL_CTRL || m_state == RX_DL_SSB);
+
+  m_interferenceCtrl->EndRx();
 
   // control error model not supported
   // forward control messages of this frame to LtePhy

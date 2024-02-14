@@ -456,8 +456,6 @@ private:
   std::ofstream m_dlOutFile;
   std::ofstream m_ulOutFile;
 
-  // ADDED DURING MERGING
-
   std::string m_dlPdcpThruFilename;
   std::ofstream m_dlPdcpThruFile;
   std::map<uint64_t, double> timeLastOutput;

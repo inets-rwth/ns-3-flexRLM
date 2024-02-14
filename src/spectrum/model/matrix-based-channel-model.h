@@ -65,7 +65,7 @@ public:
     Double2DVector     m_angle; //!< cluster angle angle[direction][n], where direction = 0(AOA), 1(ZOA), 2(AOD), 3(ZOD) in degree.
     Time               m_generatedTime; //!< generation time
     std::pair<uint32_t, uint32_t> m_nodeIds; //!< the first element is the s-node ID (the transmitter when the channel was generated), the second element is the u-node ID (the receiver when the channel was generated)
-    // ADDED DURING MERGING
+
     // added here in order to be furher used within CalcBeamformingGain
     DoubleVector m_clusterPower;
     DoubleVector m_doppler;

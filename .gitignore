@@ -11,5 +11,3 @@ bindings/python/pybindgen/
 out/
 
 __pycache__/
-
-waf-tools/

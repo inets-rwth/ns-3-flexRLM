@@ -108,7 +108,6 @@ public:
    */
   const ComplexVector & GetBeamformingVector (void) const;
 
-  // Added during merging
   double GetGainDb (Angles angle);
 
   double GetGainDb ();

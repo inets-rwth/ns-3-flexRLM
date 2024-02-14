@@ -75,14 +75,11 @@ NrGnbNetDevice::GetScheduler(uint8_t index) const
   return m_ccMap.at (index)->GetScheduler ();
 }
 
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-// ADDED DURING MERGING
 std::map < uint8_t, Ptr<BandwidthPartGnb> >
 NrGnbNetDevice::GetCcMap ()
 {
   return m_ccMap;
 }
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 void
 NrGnbNetDevice::SetCcMap (const std::map< uint8_t, Ptr<BandwidthPartGnb> > &ccm)

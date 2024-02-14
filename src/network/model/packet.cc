@@ -146,7 +146,9 @@ Packet::Packet (const Packet &o)
   : m_buffer (o.m_buffer),
     m_byteTagList (o.m_byteTagList),
     m_packetTagList (o.m_packetTagList),
-    m_metadata (o.m_metadata)
+    m_metadata (o.m_metadata),
+    m_port (o.m_port),
+    m_daddr (o.m_daddr)
 {
   o.m_nixVector ? m_nixVector = o.m_nixVector->Copy ()
     : m_nixVector = 0;
@@ -236,6 +238,8 @@ Packet::CreateFragment (uint32_t start, uint32_t length) const
   // again, call the constructor directly rather than
   // through Create because it is private.
   Ptr<Packet> ret = Ptr<Packet> (new Packet (buffer, byteTagList, m_packetTagList, metadata), false);
+  ret->SetPort(m_port);
+  ret->SetDAddr(m_daddr);
   ret->SetNixVector (GetNixVector ());
   return ret;
 }
@@ -342,6 +346,8 @@ Packet::AddAtEnd (Ptr<const Packet> packet)
   m_byteTagList.Add (copy);
   m_buffer.AddAtEnd (packet->m_buffer);
   m_metadata.AddAtEnd (packet->m_metadata);
+  m_daddr = packet->GetDAddr();
+  m_port = packet->GetPort();
 }
 void
 Packet::AddPaddingAtEnd (uint32_t size)

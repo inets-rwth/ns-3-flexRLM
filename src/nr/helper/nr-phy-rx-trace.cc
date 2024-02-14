@@ -44,6 +44,15 @@ std::string NrPhyRxTrace::m_rsrpSinrFileName;
 std::ofstream NrPhyRxTrace::m_rxPacketTraceFile;
 std::string NrPhyRxTrace::m_rxPacketTraceFilename;
 
+std::ofstream NrPhyRxTrace::m_rsrpFile;
+std::string NrPhyRxTrace::m_rsrpFilename;
+
+std::ofstream m_dlCtrlSinrFile;
+std::string m_dlCtrlSinrFileName;
+
+std::ofstream m_sinrEstimateFile;
+std::string m_sinrEstimateFileName;
+
 std::ofstream NrPhyRxTrace::m_beamSweepTraceFile;
 std::string NrPhyRxTrace::m_beamSweepTraceFilename;
 
@@ -92,6 +101,21 @@ NrPhyRxTrace::~NrPhyRxTrace ()
   if (m_rxPacketTraceFile.is_open ())
     {
       m_rxPacketTraceFile.close ();
+    }
+
+  if (m_rsrpFile.is_open ())
+    {
+      m_rsrpFile.close ();
+    }
+
+  if (m_dlCtrlSinrFile.is_open())
+    {
+        m_dlCtrlSinrFile.close();
+    }
+
+  if (m_sinrEstimateFile.is_open())
+    {
+        m_sinrEstimateFile.close();
     }
 
   if  (m_beamSweepTraceFile.is_open ())
@@ -161,6 +185,21 @@ NrPhyRxTrace::GetTypeId (void)
                    StringValue ("PhyRxThruData.txt"),
                    MakeStringAccessor (&NrPhyRxTrace::SetrxThruFilename),
                    MakeStringChecker ())
+    .AddAttribute ("RsrpFileName",
+                   "Name of the file where the RSRP results will be saved.",
+                   StringValue ("RsrpData.txt"),
+                   MakeStringAccessor (&NrPhyRxTrace::SetRsrpFilename),
+                   MakeStringChecker ())
+    .AddAttribute ("DlCtrlSinrFileName",
+                   "Name of the file where the DlCtrlSinr results will be saved.",
+                   StringValue ("DlCtrlSinrData.txt"),
+                   MakeStringAccessor (&NrPhyRxTrace::SetDlCtrlSinrFilename),
+                   MakeStringChecker ())
+    .AddAttribute ("SinrEstimateFileName",
+                   "Name of the file where the Sinr estimate results will be saved.",
+                   StringValue ("SinrEstimateData.txt"),
+                   MakeStringAccessor (&NrPhyRxTrace::SetSinrEstimateFilename),
+                   MakeStringChecker ())
     .AddAttribute ("BeamSweepFileName",
                    "Name of the file where the beam sweep traces will be saved",
                    StringValue ("BeamSweepTrace.txt"),
@@ -178,6 +217,133 @@ NrPhyRxTrace::GetTypeId (void)
                    MakeStringChecker ())
   ;
   return tid;
+}
+
+void
+NrPhyRxTrace::RsrpCallback([[maybe_unused]] Ptr<NrPhyRxTrace> phyStats,
+                                 [[maybe_unused]] std::string path,
+                                 uint16_t cellId,
+                                 uint16_t imsi,
+                                 uint16_t rnti,
+                                 double avgRsrp,
+                                 uint8_t bwpId)
+{
+    NS_LOG_INFO("UE" << rnti << "with IMSI " << imsi << " over bwp ID " << bwpId
+                     << "->Generate RsrpTrace");
+    if (!m_rsrpFile.is_open())
+    {
+        /*std::ostringstream oss;
+        oss << m_resultsFolder << "DlDataSinr" << m_simTag.c_str() << ".txt";
+        m_rsrpFileName = oss.str();
+        m_rsrpFile.open(m_rsrpFileName.c_str());*/
+
+        //Better keep iNets format:
+        m_rsrpFile.open (m_rsrpFilename.c_str ());
+
+        m_rsrpFile << "Time"
+                         << "\t"
+                         << "CellId"
+                         << "\t"
+                         << "IMSI"
+                         << "\t"
+                         << "RNTI"
+                         << "\t"
+                         << "RSRP(dB)"
+                         << "\t" << std::endl;
+
+        if (!m_rsrpFile.is_open())
+        {
+            NS_FATAL_ERROR("Could not open tracefile");
+        }
+    }
+
+    m_rsrpFile << Simulator::Now().GetSeconds() << "\t" << cellId << "\t" << imsi << "\t"
+                     << rnti << "\t" << avgRsrp << "\t" << std::endl; //N avgRsrp bereits in dB gegeben
+}
+
+void NrPhyRxTrace::DlCtrlSinrCallback([[maybe_unused]] Ptr<NrPhyRxTrace> phyStats,
+                                      [[maybe_unused]] std::string path,
+                                      uint16_t cellId,
+                                      uint16_t rnti,
+                                      uint64_t imsi,
+                                      double avgSinr,
+                                      uint16_t bwpId,
+                                      uint8_t streamId)
+{
+    NS_LOG_INFO("UE" << rnti << "of " << cellId << " over bwp ID " << bwpId
+                     << "->Generate DlCtrlSinrTrace");
+
+    if (!m_dlCtrlSinrFile.is_open())
+    {
+        /* std::ostringstream oss;
+        oss << m_resultsFolder << "DlCtrlSinr" << m_simTag.c_str() << ".txt";
+        m_dlCtrlSinrFileName = oss.str();
+        m_dlCtrlSinrFile.open(m_dlCtrlSinrFileName.c_str());*/
+
+        //Better keep iNets format:
+        m_dlCtrlSinrFile.open (m_dlCtrlSinrFileName.c_str ());
+
+        m_dlCtrlSinrFile << "Time"
+                         << "\t"
+                         << "CellId"
+                         << "\t"
+                         << "RNTI"
+                         << "\t"
+                         << "IMSI"
+                         << "\t"
+                         << "BWPId"
+                         << "\t"
+                         << "StreamId"
+                         << "\t"
+                         << "SINR(dB)" << std::endl;
+
+        if (!m_dlCtrlSinrFile.is_open())
+        {
+            NS_FATAL_ERROR("Could not open tracefile");
+        }
+    }
+
+    m_dlCtrlSinrFile << Simulator::Now().GetSeconds() << "\t" << cellId << "\t" << rnti << "\t" << imsi << "\t"
+                     << bwpId << "\t" << +streamId << "\t" << 10 * log10(avgSinr) << std::endl;
+}
+
+void NrPhyRxTrace::SinrEstimateCallback([[maybe_unused]] Ptr<NrPhyRxTrace> phyStats,
+                                      [[maybe_unused]] std::string path,
+                                      uint16_t cellId,
+                                      uint16_t rnti,
+                                      uint64_t imsi,
+                                      double avgSinr,
+                                      bool csirs)
+{
+    NS_LOG_INFO("UE" << rnti << "of " << cellId
+                     << "->Generate DlCtrlSinrTrace");
+
+    if (!m_sinrEstimateFile.is_open())
+    {
+
+        //Better keep iNets format:
+        m_sinrEstimateFile.open(m_sinrEstimateFileName.c_str());
+
+        m_sinrEstimateFile << "Time"
+                           << "\t"
+                           << "CellId"
+                           << "\t"
+                           << "RNTI"
+                           << "\t"
+                           << "IMSI"
+                           << "\t"
+                           << "SINR(dB)"
+                           << "\t"
+                           << "csirs?" << std::endl;
+
+        if (!m_sinrEstimateFile.is_open())
+        {
+            NS_FATAL_ERROR("Could not open tracefile");
+        }
+    }
+
+    m_sinrEstimateFile << Simulator::Now().GetSeconds() << "\t" << cellId << "\t" << rnti << "\t" << imsi << "\t"
+                       << "\t" << 10 * log10(avgSinr) << "\t" << (int)csirs << std::endl;
 }
 
 void
@@ -640,28 +806,30 @@ NrPhyRxTrace::RxPacketTraceUeCallback (Ptr<NrPhyRxTrace> phyStats, std::string p
     {
       //m_rxPacketTraceFilename = "RxPacketTrace.txt";
       m_rxPacketTraceFile.open (m_rxPacketTraceFilename.c_str ());
-      m_rxPacketTraceFile << "\ttime\t\tframe\tsubF\tslot\t1stSym\tsymbol#\tcellId\trnti\timsi\ttbSize\tmcs\trv\tSINR(dB)\tcorrupt\tTBler" << std::endl;
+      m_rxPacketTraceFile << "\ttime\tframe\tsubF\tslot\t1stSym\tsymbol#\tcellId\trnti\timsi\ttbSize\tmcs\trv\tSINR(dB)\tSNR(dB)\tcorrupt\tTBler" << std::endl;
       if (!m_rxPacketTraceFile.is_open ())
         {
           NS_FATAL_ERROR ("Could not open tracefile");
         }
     }
 
-  m_rxPacketTraceFile << "DL\t" << Simulator::Now().GetSeconds() 
+  m_rxPacketTraceFile << "DL"
+                      << "\t" << Simulator::Now().GetSeconds() 
                       << "\t" << params.m_frameNum
                       << "\t" << (unsigned)params.m_subframeNum
                       << "\t" << (unsigned)params.m_slotNum
                       << "\t" << (unsigned)params.m_symStart
                       << "\t" << (unsigned)params.m_numSym
-                      << "\t\t" << params.m_cellId
+                      << "\t" << params.m_cellId
                       << "\t" << params.m_rnti
                       << "\t" << params.m_imsi
                       << "\t" << params.m_tbSize
                       << "\t" << (unsigned)params.m_mcs
                       << "\t" << (unsigned)params.m_rv
                       << "\t" << 10 * log10 (params.m_sinr)
+                      << "\t" << 10 * log10 (params.m_snr)
                       << "\t" << params.m_corrupt
-                      << "\t\t" << params.m_tbler
+                      << "\t" << params.m_tbler
                       //<< "\t" << (unsigned)params.m_bwpId 
                       << std::endl;
 
@@ -677,6 +845,7 @@ NrPhyRxTrace::RxPacketTraceUeCallback (Ptr<NrPhyRxTrace> phyStats, std::string p
                     "\t" << (unsigned)params.m_mcs <<
                     "\t" << (unsigned)params.m_rv <<
                     "\t" << params.m_sinr <<
+                    "\t" << params.m_snr <<
                     "\t" << params.m_tbler <<
                     "\t" << params.m_corrupt <<
                     "\t" << (unsigned)params.m_bwpId);
@@ -687,16 +856,17 @@ NrPhyRxTrace::RxPacketTraceEnbCallback (Ptr<NrPhyRxTrace> phyStats, std::string 
 {
   if (!m_rxPacketTraceFile.is_open ())
     {
-      m_rxPacketTraceFilename = "RxPacketTraceUL.txt";
+      //m_rxPacketTraceFilename = "RxPacketTraceUL.txt";
       m_rxPacketTraceFile.open (m_rxPacketTraceFilename.c_str ());
-      m_rxPacketTraceFile << "\ttime\tframe\tsubF\tslot\t1stSym\tsymbol#\tcellId\trnti\ttbSize\tmcs\trv\tSINR(dB)\tcorrupt\tTBler" << std::endl;
+      m_rxPacketTraceFile << "\ttime\tframe\tsubF\tslot\t1stSym\tsymbol#\tcellId\trnti\timsi\ttbSize\tmcs\trv\tSINR(dB)\tSNR(dB)\tcorrupt\tTBler" << std::endl;
 
       if (!m_rxPacketTraceFile.is_open ())
         {
           NS_FATAL_ERROR ("Could not open tracefile");
         }
     }
-  m_rxPacketTraceFile << "UL\t" << Simulator::Now().GetSeconds()
+  m_rxPacketTraceFile << "UL"
+                      << "\t" << Simulator::Now().GetSeconds()
                       << "\t" << params.m_frameNum 
                       << "\t" << (unsigned)params.m_subframeNum
                       << "\t" << (unsigned)params.m_slotNum
@@ -708,6 +878,7 @@ NrPhyRxTrace::RxPacketTraceEnbCallback (Ptr<NrPhyRxTrace> phyStats, std::string 
                       << "\t" << (unsigned)params.m_mcs 
                       << "\t" << (unsigned)params.m_rv 
                       << "\t" << 10 * log10 (params.m_sinr) 
+                      << "\t" << 10 * log10 (params.m_snr)
                       << "\t" << params.m_corrupt 
                       << "\t" << params.m_tbler 
                       //<< "\t" << params.m_ccId 
@@ -720,11 +891,11 @@ NrPhyRxTrace::RxPacketTraceEnbCallback (Ptr<NrPhyRxTrace> phyStats, std::string 
                                     << "\t" << (unsigned)params.m_symStart
                                     << "\t" << (unsigned)params.m_numSym
                                     << "\t" << params.m_rnti << "\t" << params.m_tbSize << "\t" << (unsigned)params.m_mcs << "\t" << (unsigned)params.m_rv << "\t"
-                                    << params.m_sinr << "\t" << params.m_tbler << "\t" << params.m_corrupt << "\t" << params.m_sinrMin << " \t" << params.m_bwpId);
+                                    << params.m_sinr << "\t" 
+                                    << params.m_snr << "\t"<< params.m_tbler << "\t" << params.m_corrupt << "\t" << params.m_sinrMin << " \t" << params.m_bwpId);
     }
 }
 
-// ADDED DURING MERGING
 void
 NrPhyRxTrace::MacRxUe (Ptr<NrPhyRxTrace> phyStats,  std::string path, uint16_t a, uint8_t b, uint32_t pktSize, SfnSf currentSlot, uint64_t imsi)
 {
@@ -992,6 +1163,23 @@ void
 NrPhyRxTrace::SetrxThruFilename ( std::string fileName)
 {
   m_rxThruFilename = fileName;
+}
+
+void
+NrPhyRxTrace::SetRsrpFilename ( std::string fileName)
+{
+  m_rsrpFilename = fileName;
+}
+
+void
+NrPhyRxTrace::SetDlCtrlSinrFilename ( std::string fileName)
+{
+  m_dlCtrlSinrFileName = fileName;
+}
+
+void NrPhyRxTrace::SetSinrEstimateFilename(std::string fileName)
+{
+  m_sinrEstimateFileName = fileName;
 }
 
 void

@@ -91,6 +91,19 @@ public:
    */
   void SetUdp (Ptr<UdpL4Protocol> udp);
 
+  uint16_t GetPort()
+  {
+    return m_defaultPort;
+  }
+
+  void SetDAddr(uint32_t daddr){
+    m_daddr = daddr;
+  }
+
+  uint32_t GetDAddr(){
+    return m_daddr;
+  }
+
   virtual enum SocketErrno GetErrno (void) const;
   virtual enum SocketType GetSocketType (void) const;
   virtual Ptr<Node> GetNode (void) const;
@@ -243,6 +256,8 @@ private:
   Address m_defaultAddress; //!< Default address
   uint16_t m_defaultPort;   //!< Default port
   TracedCallback<Ptr<const Packet> > m_dropTrace; //!< Trace for dropped packets
+
+  uint32_t m_daddr;
 
   mutable enum SocketErrno m_errno;           //!< Socket error code
   bool                     m_shutdownSend;    //!< Send no longer allowed

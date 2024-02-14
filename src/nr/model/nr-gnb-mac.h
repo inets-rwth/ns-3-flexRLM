@@ -388,7 +388,6 @@ private:
   std::vector <MacCeElement> m_ulCeReceived;   // CE received (BSR up to now)
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  // ADDED DURING MERGING
   uint8_t m_numberOfRaPreambles; ///< number of RA preambles
   uint8_t m_preambleTransMax; ///< preamble transmit maximum
   uint8_t m_raResponseWindowSize; ///< RA response window size
@@ -445,7 +444,6 @@ private:
    */
   TracedCallback<const DlHarqInfo&> m_dlHarqFeedback;
 
-  // ADDED DURING MERGING IN ORDER TO RESOLVE CQI RNTI MISMATCH AFTER HANDOVER
   //uint16_t m_currentRnti;
   std::vector<uint16_t> m_currentRntis;
   std::vector<uint16_t> m_previousRntis;

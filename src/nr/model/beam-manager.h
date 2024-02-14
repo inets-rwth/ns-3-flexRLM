@@ -154,7 +154,6 @@ public:
    */
   void SetSector (uint16_t sector, double elevation) const;
 
-  // Added during merging
   double GetAntennaArrayGainDb (Angles angle);
 
 private:

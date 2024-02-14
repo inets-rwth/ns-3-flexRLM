@@ -34,7 +34,6 @@
 #include "ns3/mobility-model.h"
 #include "ns3/pointer.h"
 
-// ADDED DURING MERGING
 #include <fstream>
 #include "ns3/nr-ue-net-device.h"
 
@@ -948,12 +947,6 @@ ThreeGppChannelModel::GetChannel (Ptr<const MobilityModel> aMob,
         }
       }
   }
-  
-  
-
-  
-
-
   return channelMatrix;
 }
 
@@ -1032,7 +1025,7 @@ ThreeGppChannelModel::GetNewChannel (Ptr<const MobilityModel> a, Ptr<const Mobil
   else
   {
     rxRayData=GetRxRayData(traceIndex, enbLoc, bestPath, isTargetEnb, imsi);
-  }  
+  }
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   Ptr<NetDevice> txDevice = a->GetObject<Node> ()->GetDevice (0);
@@ -2313,8 +2306,6 @@ ThreeGppChannelModel::AssignStreams (int64_t stream)
   return 3;
 }
 
-// ADDED DURING MERGING
-
 bool
 ThreeGppChannelModel::IsLosBlocked (uint32_t traceIndex, Vector enbLoc, uint16_t imsi) const
 {
@@ -2801,7 +2792,7 @@ ThreeGppChannelModel::DoGetAoaAod (Vector enbLoc, uint16_t imsi)
   else
   {
     rxRayData=GetRxRayData(traceIndex, enbLoc, true, false, imsi);
-  }  
+  }
 
   std::pair<std::pair<double, double>, std::pair<double, double>> result = 
         {{rxRayData->m_aodAzimuth.at(0), rxRayData->m_aodElevation.at(0)},

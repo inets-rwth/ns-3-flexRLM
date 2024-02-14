@@ -28,7 +28,6 @@
 #include <unordered_map>
 #include "ns3/matrix-based-channel-model.h"
 
-// ADDED DURING MERGING
 #include <fstream>
 #include <ns3/output-stream-wrapper.h>
 #include <ns3/net-device.h>
@@ -142,8 +141,6 @@ public:
                                                            Ptr<const MobilityModel> a,
                                                            Ptr<const MobilityModel> b) const override;
 
-  // ADDED DURING MERGING
-
   void LoadAllTraceData(NetDeviceContainer ueNetDev, std::vector<uint16_t> walkId, std::string input_raytracing_folder);
 
   //void SetSMIdealBeamformingHelper (Ptr<IdealBeamformingAlgorithm> idealBeamformingHelper);
@@ -232,8 +229,6 @@ private:
   mutable std::unordered_map < uint32_t, Ptr<const LongTerm> > m_longTermMap; //!< map containing the long term components
   Ptr<MatrixBasedChannelModel> m_channelModel; //!< the model to generate the channel matrix
 
-  // ADDED DURING MERGING
-
   std::string input_files_folder;
   mutable std::vector<Vector> enbLocations; // locations of all the ENB
 
@@ -272,7 +267,6 @@ private:
                                      Ptr<const ThreeGppAntennaArrayModel> bAntenna,
                                      Ptr<const MatrixBasedChannelModel::ChannelMatrix> channelMatrix) const;
 
-  // ADDED DURING MERGING
   void SMSetRaySourceType (std::string type);
   std::string SMGetRaySourceType ();
   std::string m_smRaySourceType;

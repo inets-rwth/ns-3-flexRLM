@@ -75,6 +75,8 @@ NrUePhy::NrUePhy ()
     m_IAperformed = false;
   }  
   m_cellIdCounter = 1;
+
+  Simulator::Schedule(m_ueMeasurementsFilterPeriod, &NrUePhy::ReportUeMeasurements, this);
 }
 
 NrUePhy::~NrUePhy ()
@@ -149,6 +151,20 @@ NrUePhy::GetTypeId (void)
                      "Report allocated downlink TB size for trace.",
                      MakeTraceSourceAccessor (&NrUePhy::m_reportDlTbSize),
                      "ns3::DlTbSize::TracedCallback")
+    .AddAttribute("UeMeasurementsFilterPeriod",
+                    "Time period for reporting UE measurements, i.e., the"
+                    "length of layer-1 filtering.",
+                    TimeValue(MilliSeconds(200)),
+                    MakeTimeAccessor(&NrUePhy::m_ueMeasurementsFilterPeriod),
+                    MakeTimeChecker())
+    .AddTraceSource("ReportRsrp",
+                    "RSRP statistics.",
+                    MakeTraceSourceAccessor(&NrUePhy::m_reportRsrpTrace),
+                    "ns3::CurrentRsrp::TracedCallback")
+    .AddTraceSource("DlCtrlSinr",
+                    "Report the SINR computed for DL CTRL",
+                    MakeTraceSourceAccessor(&NrUePhy::m_dlCtrlSinrTrace),
+                    "ns3::NrUePhy::DlCtrlSinrTracedCallback")
     .AddTraceSource ("UePhyRxedCtrlMsgsTrace",
                      "Ue PHY Control Messages Traces.",
                      MakeTraceSourceAccessor (&NrUePhy::m_phyRxedCtrlMsgsTrace),
@@ -1221,6 +1237,129 @@ NrUePhy::ScheduleStartEventLoop (uint32_t nodeId, uint16_t frame, uint8_t subfra
 }
 
 void
+NrUePhy::ReportUeMeasurements()
+{
+    NS_LOG_FUNCTION(this);
+
+    // LteUeCphySapUser::UeMeasurementsParameters ret;
+
+    std::map<uint16_t, UeMeasurementsElement>::iterator it;
+    for (it = m_ueMeasurementsMap.begin(); it != m_ueMeasurementsMap.end(); it++)
+    {
+        double avg_rsrp;
+        // double avg_rsrq = 0;
+        if ((*it).second.rsrpNum != 0)
+        {
+            avg_rsrp = (*it).second.rsrpSum / static_cast<double>((*it).second.rsrpNum);
+        }
+        else
+        {
+            NS_LOG_WARN(" RSRP nSamples is zero!");
+            avg_rsrp = 0;
+        }
+
+        NS_LOG_DEBUG(" Report UE Measurements for CellId "
+                     << (*it).first << " Reporting UE " << m_rnti << " Av. RSRP " << avg_rsrp
+                     << " (nSamples " << +((*it).second.rsrpNum) << ")"
+                     << " BwpID " << GetBwpId());
+
+        m_reportRsrpTrace(GetCellId(), m_imsi, m_rnti, avg_rsrp, GetBwpId());
+
+        //N Block hier war original auch auskommentiert
+        /* LteUeCphySapUser::UeMeasurementsElement newEl;
+        newEl.m_cellId = (*it).first;
+        newEl.m_rsrp = avg_rsrp;
+        newEl.m_rsrq = avg_rsrq;  //LEAVE IT 0 FOR THE MOMENT
+        ret.m_ueMeasurementsList.push_back (newEl);
+        ret.m_componentCarrierId = GetBwpId ();*/
+    }
+
+    // report to RRC
+    // m_ueCphySapUser->ReportUeMeasurements (ret);
+
+    m_ueMeasurementsMap.clear();
+    Simulator::Schedule(m_ueMeasurementsFilterPeriod, &NrUePhy::ReportUeMeasurements, this);
+}
+
+//N neu für DlCtrlSinr Tracing
+void
+NrUePhy::ReportDlCtrlSinr(const SpectrumValue& sinr, uint8_t streamId)
+{
+    NS_LOG_FUNCTION(this);
+    uint32_t rbUsed = 0;
+    double sinrSum = 0.0;
+
+    for (uint32_t i = 0; i < sinr.GetValuesN(); i++)
+    {
+        double currentSinr = sinr.ValuesAt(i);
+        if (currentSinr != 0)
+        {
+            rbUsed++;
+            sinrSum += currentSinr;
+        }
+    }
+
+    NS_ASSERT(rbUsed);
+    m_dlCtrlSinrTrace(GetCellId(), m_rnti, m_imsi, sinrSum / rbUsed, GetBwpId(), streamId);
+}
+
+void
+NrUePhy::ReceivePss(uint16_t cellId, const Ptr<SpectrumValue>& p)
+{
+    NS_LOG_FUNCTION(this);
+
+    double sum = 0.0;
+    uint16_t nRB = 0;
+
+    uint32_t subcarrierSpacing;
+    subcarrierSpacing = 15000 * static_cast<uint32_t>(std::pow(2, GetNumerology()));
+
+    Values::const_iterator itPi;
+    for (itPi = p->ConstValuesBegin(); itPi != p->ConstValuesEnd(); itPi++)
+    {
+        // convert PSD [W/Hz] to linear power [W] for the single RE
+        double powerTxW = (*itPi) * subcarrierSpacing;
+        sum += powerTxW;
+        nRB++;
+    }
+
+    // measure instantaneous RSRP now (in dBm)
+    double rsrp = 10 * log10(1000 * (sum / static_cast<double>(nRB)));
+
+    NS_LOG_DEBUG("RSRP value updated: " << rsrp << " dBm"
+                                        << " for Cell Id: " << cellId << " RNTI: " << m_rnti);
+
+    // store RSRP measurements
+    std::map<uint16_t, UeMeasurementsElement>::iterator itMeasMap =
+        m_ueMeasurementsMap.find(cellId);
+    if (itMeasMap == m_ueMeasurementsMap.end())
+    {
+        // insert new entry
+        UeMeasurementsElement newEl;
+        newEl.rsrpSum = rsrp;
+        newEl.rsrpNum = 1;
+        newEl.rsrqSum = 0;
+        newEl.rsrqNum = 0;
+
+        NS_LOG_DEBUG("New RSRP entry for Cell Id: " << cellId << " RNTI: " << m_rnti
+                                                    << " RSRP: " << newEl.rsrpSum << " dBm"
+                                                    << " number of entries: " << +newEl.rsrpNum);
+
+        m_ueMeasurementsMap.insert(std::pair<uint16_t, UeMeasurementsElement>(cellId, newEl));
+    }
+    else
+    {
+        (*itMeasMap).second.rsrpSum += rsrp;
+        (*itMeasMap).second.rsrpNum++;
+
+        NS_LOG_DEBUG("Update RSRP entry for Cell Id: "
+                     << cellId << " RNTI: " << m_rnti
+                     << " RSRP Sum: " << (*itMeasMap).second.rsrpSum << " dBm"
+                     << " number of entries: " << +((*itMeasMap).second.rsrpNum));
+    }
+}
+
+void
 NrUePhy::StartEventLoop (uint16_t frame, uint8_t subframe, uint16_t slot)
 {
   NS_LOG_FUNCTION (this);
@@ -1314,8 +1453,6 @@ NrUePhy::DoSetImsi (uint64_t imsi)
   m_imsi = imsi;
 }
 
-// ADDED DURING MERGING
-
 void
 NrUePhy::UpdateSinrEstimate (uint16_t cellId, double sinr)
 {
@@ -1344,7 +1481,7 @@ NrUePhy::UpdateSinrEstimate (uint16_t cellId, double sinr)
 
         if (m_resetIdealBeamforming)
         {
-          NS_LOG_UNCOND("SINR below more than defined threshold, performing ideal beamforming to all enbs");
+          NS_LOG_UNCOND("SINR below more than defined threshold, performing ideal beamforming to all enbs, IMSI:" << m_imsi);
           if (m_adaptiveBF)
           {
             if (!m_IAalreadyTriggered)
@@ -1357,7 +1494,7 @@ NrUePhy::UpdateSinrEstimate (uint16_t cellId, double sinr)
             }
             else
             {
-              NS_LOG_UNCOND("IA already triggered, wont trigger until it is completed");
+              NS_LOG_UNCOND("IA already triggered, wont trigger until it is completed, IMSI:" << m_imsi);
             }
 
             //}
@@ -1389,7 +1526,6 @@ NrUePhy::UpdateSinrEstimate (uint16_t cellId, double sinr)
   
 }
 
-// ADDED DURING MERGING
 void 
 NrUePhy::SetPhyIdealBeamformingHelper (Ptr<IdealBeamformingHelper> idealBeamformingHelper)
 {
@@ -1712,9 +1848,9 @@ SSBProcessor::SetStartingSfn (SfnSf startingSfn)
 void 
 NrUePhy::CheckIfSweepIsComplete()
 {
-  for (auto cellIndex = 1; cellIndex <= 10; cellIndex++)
+  for (std::map<uint8_t, Ptr<SSBProcessor>>::iterator cellIterator = m_cellIDSSBMap.begin(); cellIterator != m_cellIDSSBMap.end(); ++cellIterator)
   {
-    if (!m_cellIDSSBMap.at(cellIndex)->sweepComplete)
+    if (!cellIterator->second->sweepComplete)
     {
       return;
     }
@@ -1818,19 +1954,27 @@ NrUePhy::CheckIfSweepIsComplete()
     }
   }
 
-  if (m_ueCphySapUser->IsRrcIdleStart () && 
-      10 *log10 (cellOptimalBeamMap.at(m_lastOptimalCellBeamPair.first).at(0).second.first)  > 5)
+  if (m_ueCphySapUser->IsRrcIdleStart())
   {
-    m_beamManager->SetSector (m_lastOptimalCellBeamPair.second.GetSector (), 
-                            m_lastOptimalCellBeamPair.second.GetElevation ());
+    // same condition thats tested in LTE coordinator for handovers
+    if (10 * log10(cellOptimalBeamMap.at(m_lastOptimalCellBeamPair.first).at(0).second.first) > 5)
+    {
+      m_beamManager->SetSector(m_lastOptimalCellBeamPair.second.GetSector(),
+                              m_lastOptimalCellBeamPair.second.GetElevation());
 
-    ReEstablishConnectionWithCell (m_lastOptimalCellBeamPair.first);
+      ReEstablishConnectionWithCell(m_lastOptimalCellBeamPair.first);
 
-    RadioLinkMonitoringTraceParams rlmParams;
-    rlmParams.imsi = m_imsi;
-    rlmParams.m_radioLinkMonitoringOrigin = RadioLinkMonitoringTraceParams::HANDOVER_AFTER_UE_IA_SWEEP;
-    rlmParams.targetCellId = m_lastOptimalCellBeamPair.first;
-    m_radioLinkMonitoringTrace(rlmParams);
+      RadioLinkMonitoringTraceParams rlmParams;
+      rlmParams.imsi = m_imsi;
+      rlmParams.m_radioLinkMonitoringOrigin = RadioLinkMonitoringTraceParams::HANDOVER_AFTER_UE_IA_SWEEP;
+      rlmParams.targetCellId = m_lastOptimalCellBeamPair.first;
+      m_radioLinkMonitoringTrace(rlmParams);
+    }
+    else
+    {
+      // new IA will be started
+      Simulator::Schedule(MilliSeconds(10), &NrUePhy::SetIAStateOfAllGnbs, this, false);
+    }
   }
   else if (m_lastOptimalCellBeamPair.first != GetCellId())
   {
@@ -1839,7 +1983,7 @@ NrUePhy::CheckIfSweepIsComplete()
   }
   else
   {
-    Simulator::Schedule (MilliSeconds(10), &NrUePhy::SetIAStateOfAllGnbs, this, false);
+    Simulator::Schedule(MilliSeconds(10), &NrUePhy::SetIAStateOfAllGnbs, this, false);
   }
 }
 
@@ -1848,10 +1992,16 @@ NrUePhy::RetrieveCellOptimalMap ()
 {
   auto txSectorNumber = m_gnbSectorNumber;
   auto rxSectorNumber = m_ueBeamVectorList.size();
-  if (m_cellIDSSBMap.at(1)->rxBeamtxSectorSNRMap.size() != 0)
-    {
-      rxSectorNumber = m_cellIDSSBMap.at(1)->rxBeamtxSectorSNRMap.at(1).size ();
-    }
+
+  std::map<uint8_t, Ptr<SSBProcessor>>::iterator cellIteratorFirst = m_cellIDSSBMap.begin();
+  NS_ASSERT_MSG (cellIteratorFirst != m_cellIDSSBMap.end(), "SSB Error, Map empty");
+  Ptr<SSBProcessor> ssbProcessorFirst = cellIteratorFirst->second;
+
+
+  if (ssbProcessorFirst->rxBeamtxSectorSNRMap.size() != 0)
+  {
+    rxSectorNumber = ssbProcessorFirst->rxBeamtxSectorSNRMap.at(1).size ();
+  }
 
   m_cellToSNRAvgMap.clear ();
 
@@ -1860,24 +2010,24 @@ NrUePhy::RetrieveCellOptimalMap ()
   m_beamsTbRLM.erase(m_imsi);
   m_beamsTbRLM.insert ({m_imsi, {}});
   
-  for (auto cellIndex = 1; cellIndex <= 10; cellIndex++)
+  for (std::map<uint8_t, Ptr<SSBProcessor>>::iterator cellIterator = m_cellIDSSBMap.begin(); cellIterator != m_cellIDSSBMap.end(); ++cellIterator)
+  {
+    Ptr<SSBProcessor> ssbProcessor = cellIterator->second;
+    std::vector<std::pair<std::pair<SfnSf, uint16_t>, std::pair<double, BeamId>>> listOfRLMBeams;
+    //std::cout << "m_noOfBeamsTbRLM 3: " << std::to_string(m_noOfBeamsTbRLM) << std::endl;
+    for (auto rlmIndex = 0; rlmIndex < m_noOfBeamsTbRLM; rlmIndex++)
     {
-      Ptr<SSBProcessor> ssbProcessor = m_cellIDSSBMap.at(cellIndex);
-      std::vector<std::pair<std::pair<SfnSf, uint16_t>, std::pair<double, BeamId>>> listOfRLMBeams;
-      for (auto rlmIndex = 0; rlmIndex < m_noOfBeamsTbRLM; rlmIndex++)
-      {
-        FindMaximumSNR (ssbProcessor, rxSectorNumber, txSectorNumber, cellIndex, true);
-        listOfRLMBeams.emplace_back (std::pair<std::pair<SfnSf, uint16_t>, std::pair<double, BeamId>> (std::pair<SfnSf, uint16_t> (ssbProcessor->m_startingSfn, ssbProcessor->m_maxTxRxPairForCell.second.first),
-                                     std::pair<double, BeamId> (ssbProcessor->m_maxSNRPerCell, ssbProcessor->m_maxTxRxPairForCell.second.second)));
-        m_beamsTbRLM.at(m_imsi).emplace_back (std::make_pair(cellIndex, ssbProcessor->m_maxTxRxPairForCell.second.second));
-      }
-
-      gNBOptimalBeamMap.insert (std::pair<uint8_t, std::vector<std::pair<std::pair<SfnSf, uint16_t>, std::pair<double, BeamId>>>> (
-                                cellIndex, std::vector<std::pair<std::pair<SfnSf, uint16_t>, std::pair<double, BeamId>>> (
-                                  listOfRLMBeams
-                                )));
+      FindMaximumSNR (ssbProcessor, rxSectorNumber, txSectorNumber, cellIterator->first, true);
+      listOfRLMBeams.emplace_back (std::pair<std::pair<SfnSf, uint16_t>, std::pair<double, BeamId>>(std::pair<SfnSf, uint16_t> (ssbProcessor->m_startingSfn, ssbProcessor->m_maxTxRxPairForCell.second.first),
+                                    std::pair<double, BeamId> (ssbProcessor->m_maxSNRPerCell, ssbProcessor->m_maxTxRxPairForCell.second.second)));
+      m_beamsTbRLM.at(m_imsi).emplace_back (std::make_pair(cellIterator->first, ssbProcessor->m_maxTxRxPairForCell.second.second));
     }
-  
+
+    gNBOptimalBeamMap.insert (std::pair<uint8_t, std::vector<std::pair<std::pair<SfnSf, uint16_t>, std::pair<double, BeamId>>>> (
+                              cellIterator->first, std::vector<std::pair<std::pair<SfnSf, uint16_t>, std::pair<double, BeamId>>> (
+                                listOfRLMBeams
+                              )));
+  }
   return gNBOptimalBeamMap;
 }
 
